@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -141,8 +142,21 @@ export default function DailyTasks() {
   const doneTasks = filteredTasks.filter(task => task.uploaded)
 
   const TaskCard = ({ task }: { task: typeof tasks[0] }) => (
-    <Card 
-      key={task.id} 
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ 
+        opacity: 1, 
+        y: 0,
+        scale: task.uploaded ? 0.98 : 1,
+        transition: { type: "spring", stiffness: 300, damping: 25 }
+      }}
+      exit={{ 
+        opacity: 0,
+        x: task.uploaded ? 300 : -300,
+        transition: { duration: 0.5 }
+      }}
+      whileHover={{ scale: 1.02 }}
       className={`
         bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-300 
         ${task.uploaded ? 'border-green-500' : ''}
@@ -249,7 +263,7 @@ export default function DailyTasks() {
           </div>
         )}
       </CardContent>
-    </Card>
+    </motion.div>
   )
 
   const getRandomColors = () => {
@@ -314,18 +328,22 @@ export default function DailyTasks() {
             <TabsTrigger value="done">Done ({doneTasks.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="todo">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {todoTasks.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
+            <AnimatePresence mode="popLayout">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {todoTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} />
+                ))}
+              </div>
+            </AnimatePresence>
           </TabsContent>
           <TabsContent value="done">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {doneTasks.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
+            <AnimatePresence mode="popLayout">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {doneTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} />
+                ))}
+              </div>
+            </AnimatePresence>
           </TabsContent>
         </Tabs>
         <div ref={loader} className="h-10 flex items-center justify-center">
