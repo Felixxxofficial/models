@@ -36,7 +36,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
 
   // Handle Reddit content
   if (type === 'reddit' && isRedditPost(content)) {
-    if (content.Media === 'Gif/Video' && content['URL Gdrive']) {
+    if (content.Media === 'Gif/Video' && typeof content['URL Gdrive'] === 'string') {
       return (
         <div className="touch-none" style={{ touchAction: 'none' }}>
           <VideoPlayer src={content['URL Gdrive']} />
@@ -57,7 +57,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   }
 
   // Handle Instagram content
-  if (type === 'instagram' && 'Instagram GDrive' in content && content['Instagram GDrive']) {
+  if (type === 'instagram' && typeof content['Instagram GDrive'] === 'string') {
     return (
       <div className="touch-none" style={{ touchAction: 'none' }}>
         <VideoPlayer src={content['Instagram GDrive']} />
