@@ -29,8 +29,41 @@ export interface IGPost {
   uploaded: boolean;
 }
 
+export interface RedditPost {
+  id: string;
+  Title: string;
+  Link: string;
+  Media: 'Image' | 'Gif/Video';
+  Status?: string;
+  Image?: {
+    url: string;
+    filename: string;
+    type: string;
+  }[];
+  'URL Gdrive'?: string;
+  'Done Meli'?: boolean;
+}
+
 const DEFAULT_VIEW = 'Grid view';
 let airtableBase: any = null;
+
+// Add separate config for Instagram
+const instagramConfig = {
+  apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY!,
+  baseId: process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!,
+  tableId: process.env.NEXT_PUBLIC_AIRTABLE_IG!,
+  viewId: process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI!,
+  endpointUrl: 'https://api.airtable.com'
+};
+
+// Add separate config for Reddit
+const redditConfig = {
+  apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY!,
+  baseId: process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_BASE_ID!,
+  tableId: process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_TABLE_ID!,
+  viewId: process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_VIEW_ID!,
+  endpointUrl: 'https://api.airtable.com'
+};
 
 function getAirtableBase() {
   if (airtableBase) return airtableBase;
@@ -135,20 +168,82 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
   }
 }
 
-export async function updateDoneStatus(recordId: string, done: boolean): Promise<boolean> {
+export async function updateDoneStatus(
+  taskId: string,
+  done: boolean,
+  isInstagram: boolean
+) {
   try {
-    const base = getAirtableBase();
-    if (!base) return false;
-
-    const tableId = process.env.NEXT_PUBLIC_AIRTABLE_IG;
-    if (!tableId) return false;
-
-    await base(tableId).update(recordId, {
-      'Done Meli': done
+    const config = isInstagram ? instagramConfig : redditConfig;
+    
+    console.log('Updating task with config:', {
+      taskId,
+      done,
+      isInstagram,
+      baseId: config.baseId,
+      tableId: config.tableId
     });
-    return true;
+
+    const response = await fetch(
+      `${config.endpointUrl}/v0/${config.baseId}/${config.tableId}/${taskId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fields: {
+            'Done Meli': done  // Make sure this matches your field name in Airtable
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Update failed:', errorText);
+      throw new Error(`Failed to update status: ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('Update successful:', result);
+    return result;
   } catch (error) {
     console.error('Error updating done status:', error);
-    return false;
+    throw error;
+  }
+}
+
+export async function fetchRedditPosts(): Promise<RedditPost[]> {
+  try {
+    const url = `https://api.airtable.com/v0/${process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_BASE_ID}/${process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_TABLE_ID}?view=${process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_VIEW_ID}`;
+    console.log('Fetching Reddit posts from:', url);
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_AIRTABLE_API_KEY}`,
+      },
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Reddit API Error:', errorText);
+      throw new Error('Failed to fetch Reddit posts');
+    }
+
+    const data = await response.json();
+    console.log('Reddit data received:', data);
+    
+    // Map the records and ensure Image field is included
+    return data.records.map((record: any) => ({
+      id: record.id,
+      ...record.fields,
+      Image: record.fields.Image || []
+    }));
+  } catch (error) {
+    console.error('Error fetching Reddit posts:', error);
+    return [];
   }
 } 
