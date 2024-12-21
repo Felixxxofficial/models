@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Dialog, DialogContent } from './ui/dialog';
-import { IGPost, RedditPost } from '@/types/airtable';
 import { Video, FileVideo, Play } from 'lucide-react';
 import { VideoPlayer } from './VideoPlayer';
+import type { IGPost, RedditPost } from '../types/airtable';
 
 interface ContentDisplayProps {
   content: IGPost | RedditPost;
   type: 'instagram' | 'reddit';
+}
+
+function isRedditPost(content: IGPost | RedditPost): content is RedditPost {
+  return 'Media' in content && 'Title' in content;
 }
 
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
