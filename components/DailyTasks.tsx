@@ -15,7 +15,7 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Video, FileText, ExternalLink, Upload, ImageIcon, AlertTriangle, FileVideo } from 'lucide-react'
+import { Video, FileText, ExternalLink, Upload, ImageIcon, AlertTriangle, FileVideo, Play } from 'lucide-react'
 import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
 import ReactConfetti from 'react-confetti'
@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { NoteDialog } from './NoteDialog'
 import { MotivationalMessage } from './MotivationalMessage'
-import { fetchIGPosts, type IGPost } from '@/lib/airtable'
+import { fetchIGPosts, type IGPost, updateDoneStatus } from '@/lib/airtable'
 import { Instagram } from 'react-content-loader'
 import { Video as VideoComponent } from './Video'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -76,10 +76,26 @@ const getEmbedUrl = (url: string | null) => {
 };
 
 const TaskCard = ({ task, index }: { task: IGPost; index?: number }) => {
+  const [isDone, setIsDone] = useState(task['Done Meli'] || false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handleToggle = async (checked: boolean) => {
+    setIsUpdating(true);
+    try {
+      const success = await updateDoneStatus(task.id.toString(), checked);
+      if (success) {
+        setIsDone(checked);
+      }
+    } catch (error) {
+      console.error('Error updating done status:', error);
+    }
+    setIsUpdating(false);
+  };
+
   const getVideoUrl = (url: string) => {
     if (!url || url === 'No video URL') return null;
 
-    // Extract file ID from Google Drive URL
     const fileId = url.match(/[-\w]{25,}/);
     return fileId 
       ? `https://drive.google.com/file/d/${fileId[0]}/preview`
@@ -87,39 +103,76 @@ const TaskCard = ({ task, index }: { task: IGPost; index?: number }) => {
   };
 
   const videoUrl = task['Instagram GDrive'];
+  const uploadUrl = task['Upload Content Meli'];
   const embedUrl = videoUrl ? getVideoUrl(videoUrl) : null;
+
+  // Get the thumbnail URL from the first attachment
+  const thumbnailUrl = task.Thumbnail?.[0]?.url;
 
   return (
     <motion.div
-      className="relative bg-white rounded-lg shadow-md overflow-hidden"
+      className="relative bg-white rounded-lg shadow-md overflow-hidden w-full max-w-[315px]"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index ? index * 0.1 : 0 }}
     >
-      <CardContent>
+      <CardContent className="p-3">
         {embedUrl && (
-          <div className="relative w-[315px] mx-auto pt-[177.77%] mb-4">
-            <iframe
-              src={embedUrl}
-              className="absolute top-0 left-0 w-full h-full rounded-lg"
-              allow="autoplay"
-              allowFullScreen
-              frameBorder="0"
-            />
+          <div className="relative w-full pt-[177.77%] mb-3">
+            {!isPlaying && thumbnailUrl ? (
+              <div 
+                className="absolute top-0 left-0 w-full h-full cursor-pointer"
+                onClick={() => setIsPlaying(true)}
+              >
+                <img 
+                  src={thumbnailUrl} 
+                  alt={task.title}
+                  className="w-full h-full object-cover rounded-lg"
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                    <Play className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <iframe
+                src={embedUrl}
+                className="absolute top-0 left-0 w-full h-full rounded-lg"
+                allow="autoplay"
+                allowFullScreen
+                frameBorder="0"
+              />
+            )}
           </div>
         )}
         
-        <div className="flex justify-between mt-4">
-          <Button variant="outline">
+        <div className="flex items-center justify-between gap-2 mt-2">
+          <Button 
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1 hover:bg-primary hover:text-primary-foreground transition-colors"
+            asChild
+          >
             <a 
-              href={videoUrl || '#'} 
+              href={uploadUrl || '#'} 
               target="_blank"
               rel="noopener noreferrer"
+              className="flex items-center gap-1"
             >
-              Upload to Google Drive
+              <Upload className="w-3 h-3" />
+              <span className="text-sm">Upload</span>
             </a>
           </Button>
-          <Button>Done</Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Done</span>
+            <Switch
+              checked={isDone}
+              onCheckedChange={handleToggle}
+              disabled={isUpdating}
+              className="scale-75"
+            />
+          </div>
         </div>
       </CardContent>
     </motion.div>
