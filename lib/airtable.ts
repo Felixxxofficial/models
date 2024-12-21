@@ -24,18 +24,23 @@ export interface IGPost {
   uploaded: boolean;
 }
 
+// Initialize base at the top level
+if (!process.env.NEXT_PUBLIC_AIRTABLE_API_KEY) {
+  throw new Error('Airtable API key is not defined');
+}
+
+if (!process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID) {
+  throw new Error('Airtable Base ID is not defined');
+}
+
+const base = new Airtable({ 
+  apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY 
+}).base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID);
+
 export async function fetchIGPosts(): Promise<IGPost[]> {
   try {
     const viewName = process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI;
     
-    if (!process.env.NEXT_PUBLIC_AIRTABLE_API_KEY) {
-      throw new Error('Airtable API key is not defined');
-    }
-
-    if (!process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID) {
-      throw new Error('Airtable Base ID is not defined');
-    }
-
     if (!process.env.NEXT_PUBLIC_AIRTABLE_IG) {
       throw new Error('Airtable table ID is not defined');
     }
@@ -43,10 +48,6 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
     if (!viewName) {
       throw new Error('Airtable view name is not defined');
     }
-
-    const base = new Airtable({ 
-      apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY 
-    }).base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID);
 
     const records = await base(process.env.NEXT_PUBLIC_AIRTABLE_IG)
       .select({
@@ -77,9 +78,13 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
   }
 }
 
-export async function updateDoneStatus(recordId: string, done: boolean) {
+export async function updateDoneStatus(recordId: string, done: boolean): Promise<boolean> {
   try {
-    await base(process.env.NEXT_PUBLIC_AIRTABLE_IG!).update(recordId, {
+    if (!process.env.NEXT_PUBLIC_AIRTABLE_IG) {
+      throw new Error('Airtable table ID is not defined');
+    }
+
+    await base(process.env.NEXT_PUBLIC_AIRTABLE_IG).update(recordId, {
       'Done Meli': done
     });
     return true;
