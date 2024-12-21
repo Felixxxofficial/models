@@ -98,28 +98,13 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-  const handleToggle = async (checked: boolean) => {
-    setIsUpdating(true);
-    try {
-      const isInstagram = isIGPost(task);
-      await onDone(task.id.toString(), checked, isInstagram);
-      setIsDone(checked);
-    } catch (error) {
-      console.error('Error toggling done status:', error);
-    }
-    setIsUpdating(false);
-  };
+  interface MediaContent {
+    isVideo: boolean;
+    url?: string;
+    imageUrl?: string;
+  }
 
-  const getVideoUrl = (url: string) => {
-    if (!url || url === 'No video URL') return null;
-
-    const fileId = url.match(/[-\w]{25,}/);
-    return fileId 
-      ? `https://drive.google.com/file/d/${fileId[0]}/preview`
-      : url;
-  };
-
-  const getMediaContent = () => {
+  const getMediaContent = (): MediaContent | null => {
     if (isRedditPost(task)) {
       if (task.Media === 'Gif/Video') {
         return {
@@ -129,6 +114,7 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
       } else if (task.Media === 'Image' && task.Image?.[0]?.url) {
         return {
           isVideo: false,
+          imageUrl: task.Image[0].url,
           url: task.Image[0].url
         };
       }
