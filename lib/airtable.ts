@@ -1,4 +1,4 @@
-import Airtable from 'airtable';
+import Airtable, { Record, FieldSet } from 'airtable';
 
 interface AirtableAttachment {
   id: string;
@@ -67,13 +67,26 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
       .select({
         view: viewName,
         maxRecords: 100,
-        pageSize: 10
+        pageSize: 10,
+        fields: [
+          'Title',
+          'Caption',
+          'Status',
+          'Deadline',
+          'Instagram GDrive',
+          'Upload Content Meli',
+          'Done Meli',
+          'Thumbnail',
+          'isUrgent',
+          'Notes',
+          'Content Type'
+        ]
       })
       .all();
 
     console.log('Fetched records:', records.length);
 
-    return records.map(record => ({
+    return records.map((record: Record<FieldSet>) => ({
       id: record.id,
       title: record.get('Title') as string || '',
       caption: record.get('Caption') as string || '',
