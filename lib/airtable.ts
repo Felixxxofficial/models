@@ -38,20 +38,38 @@ function getAirtableBase() {
   const apiKey = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
   const baseId = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
 
-  if (!apiKey || !baseId) {
-    console.error('Airtable credentials not found');
+  if (!apiKey) {
+    console.error('Airtable API key is missing');
     return null;
   }
 
-  Airtable.configure({
-    apiKey: apiKey,
-    endpointUrl: 'https://api.airtable.com',
-    apiVersion: '0.1.0',
-    noRetryIfRateLimited: false
-  });
+  if (!baseId) {
+    console.error('Airtable Base ID is missing');
+    return null;
+  }
 
-  airtableBase = new Airtable().base(baseId);
-  return airtableBase;
+  try {
+    // Configure with explicit authentication
+    const config = {
+      apiKey: apiKey,
+      endpointUrl: 'https://api.airtable.com',
+    };
+
+    Airtable.configure(config);
+    
+    // Log configuration (but mask the API key)
+    console.log('Airtable Config:', {
+      ...config,
+      apiKey: apiKey ? `${apiKey.slice(0, 5)}...` : 'missing',
+      baseId: baseId
+    });
+
+    airtableBase = new Airtable(config).base(baseId);
+    return airtableBase;
+  } catch (error) {
+    console.error('Error initializing Airtable:', error);
+    return null;
+  }
 }
 
 export async function fetchIGPosts(): Promise<IGPost[]> {
@@ -61,6 +79,11 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
       throw new Error('Could not initialize Airtable base');
     }
 
+    // Add authentication headers explicitly
+    const headers = {
+      Authorization: `Bearer ${process.env.NEXT_PUBLIC_AIRTABLE_API_KEY}`,
+    };
+
     const viewName = process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI || DEFAULT_VIEW;
     const tableId = process.env.NEXT_PUBLIC_AIRTABLE_IG;
 
@@ -68,41 +91,13 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
       throw new Error('Airtable table ID is not defined');
     }
 
-    console.log('Airtable Config:', {
-      baseId: process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID,
-      tableId: tableId,
-      viewName: viewName,
-      hasApiKey: !!process.env.NEXT_PUBLIC_AIRTABLE_API_KEY
-    });
-
-    const table = base(tableId);
-    
-    const testQuery = await table.select({
-      maxRecords: 1,
-      view: viewName
-    }).firstPage();
-    
-    console.log('Test query successful:', !!testQuery);
-
-    const records = await table
+    const records = await base(tableId)
       .select({
         view: viewName,
         maxRecords: 100,
         pageSize: 10,
-        fields: [
-          'Title',
-          'Caption',
-          'Status',
-          'Deadline',
-          'Instagram GDrive',
-          'Upload Content Meli',
-          'Done Meli',
-          'Thumbnail',
-          'isUrgent',
-          'Notes',
-          'Content Type',
-          'Uploaded'
-        ]
+        // Pass headers explicitly
+        _options: { headers }
       })
       .all();
 
