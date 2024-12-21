@@ -1,28 +1,17 @@
-import VideoPlayer from '@/components/VideoPlayer'
-import Image from 'next/image'
-import { Instagram, Play } from 'lucide-react'
-import type { IGPost } from '@/lib/airtable'
-import type { RedditPost } from '@/lib/airtable'
+import { useState } from 'react';
+import Image from 'next/image';
+import { Dialog, DialogContent } from './ui/dialog';
+import { IGPost, RedditPost } from '@/types/airtable';
+import { Video, FileVideo, Play } from 'lucide-react';
+import { VideoPlayer } from './VideoPlayer';
 
-type ContentProps = {
+interface ContentDisplayProps {
   content: IGPost | RedditPost;
   type: 'instagram' | 'reddit';
 }
 
-export default function ContentDisplay({ content, type }: ContentProps) {
-  const [showDialog, setShowDialog] = React.useState(false);
-
-  // Handle Instagram content
-  if (type === 'instagram' && 'Instagram GDrive' in content) {
-    if (content['Instagram GDrive']) {
-      return (
-        <div className="touch-none" style={{ touchAction: 'none' }}>
-          <VideoPlayer src={content['Instagram GDrive']} />
-        </div>
-      )
-    }
-    return null;
-  }
+export default function ContentDisplay({ content, type }: ContentDisplayProps) {
+  const [showDialog, setShowDialog] = useState(false);
 
   // Handle Reddit content
   if (type === 'reddit' && isRedditPost(content)) {
@@ -31,7 +20,7 @@ export default function ContentDisplay({ content, type }: ContentProps) {
         <div className="touch-none" style={{ touchAction: 'none' }}>
           <VideoPlayer src={content['URL Gdrive']} />
         </div>
-      )
+      );
     } else if (content.Media === 'Image' && content.Image?.[0]?.url) {
       return (
         <div className="relative aspect-square">
@@ -42,8 +31,17 @@ export default function ContentDisplay({ content, type }: ContentProps) {
             className="object-cover"
           />
         </div>
-      )
+      );
     }
+  }
+
+  // Handle Instagram content
+  if (type === 'instagram' && 'Instagram GDrive' in content) {
+    return (
+      <div className="touch-none" style={{ touchAction: 'none' }}>
+        <VideoPlayer src={content['Instagram GDrive']} />
+      </div>
+    );
   }
 
   return null;
