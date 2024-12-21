@@ -1,13 +1,7 @@
 import Airtable from 'airtable';
 
-const base = new Airtable({
-  apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY
-}).base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!);
-
 interface AirtableAttachment {
   id: string;
-  width: number;
-  height: number;
   url: string;
   filename: string;
   size: number;
@@ -15,28 +9,30 @@ interface AirtableAttachment {
 }
 
 export interface IGPost {
-  id: number;
+  id: string;
   title: string;
-  type: 'image' | 'video' | 'story';
-  url?: string;
-  caption?: string;
-  status?: string;
-  deadline?: string;
-  "Instagram GDrive"?: string;
-  "Upload Content Meli"?: string;
-  "Done Meli"?: boolean;
-  "Thumbnail"?: AirtableAttachment[];
+  caption: string;
+  status: string;
+  deadline: string;
+  'Instagram GDrive': string;
+  'Upload Content Meli': string;
+  'Done Meli': boolean;
+  Thumbnail: AirtableAttachment[];
   isUrgent: boolean;
-  notes?: string;
+  notes: string;
+  type: 'image' | 'video' | 'story';
   uploaded: boolean;
-  transitioning?: boolean;
 }
+
+const base = new Airtable({ apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY }).base(
+  process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!
+);
 
 export async function fetchIGPosts(): Promise<IGPost[]> {
   try {
     const records = await base(process.env.NEXT_PUBLIC_AIRTABLE_IG!)
       .select({
-        view: process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI
+        view: process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI,
       })
       .all();
 
@@ -46,12 +42,14 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
       caption: record.get('Caption') as string,
       status: record.get('Status') as string,
       deadline: record.get('Deadline') as string,
-      "Instagram GDrive": record.get('Instagram GDrive') as string,
-      "Upload Content Meli": record.get('Upload Content Meli') as string,
-      "Done Meli": record.get('Done Meli') as boolean,
-      "Thumbnail": record.get('Thumbnail') as AirtableAttachment[],
-      isUrgent: record.get('IsUrgent') as boolean,
+      'Instagram GDrive': record.get('Instagram GDrive') as string,
+      'Upload Content Meli': record.get('Upload Content Meli') as string,
+      'Done Meli': record.get('Done Meli') as boolean,
+      Thumbnail: record.get('Thumbnail') as AirtableAttachment[],
+      isUrgent: record.get('isUrgent') as boolean,
       notes: record.get('Notes') as string,
+      type: record.get('Content Type') as 'image' | 'video' | 'story' || 'image',
+      uploaded: record.get('Uploaded') as boolean || false,
     }));
   } catch (error) {
     console.error('Error fetching IG posts:', error);
