@@ -64,9 +64,10 @@ export default function ContentList() {
                   {item.type === 'image' && (
                     <Image 
                       src={item.preview} 
-                      alt={item.title} 
-                      layout="fill" 
-                      objectFit="cover"
+                      alt={item.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover"
                     />
                   )}
                   {item.type === 'video' && (

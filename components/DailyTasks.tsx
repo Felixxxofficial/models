@@ -6,29 +6,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Video, FileText, ExternalLink, Upload, ImageIcon, AlertTriangle } from 'lucide-react'
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Video, FileText, ExternalLink, Upload, ImageIcon, AlertTriangle, FileVideo } from 'lucide-react'
 import Image from 'next/image'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import ReactConfetti from 'react-confetti'
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { NoteDialog } from './NoteDialog'
 import { MotivationalMessage } from './MotivationalMessage'
-
-
-// Simulating a larger dataset
-const generateTasks = (count: number, startId: number) => Array.from({ length: count }, (_, i) => ({
-  id: startId + i,
-  type: ['image', 'video', 'story'][i % 3],
-  title: `Content ${startId + i}`,
-  preview: i % 3 === 0 ? '/placeholder.svg?height=300&width=300' :
-           i % 3 === 1 ? 'https://www.youtube.com/embed/dQw4w9WgXcQ' :
-           'https://www.instagram.com/reel/ABC123/',
-  uploaded: false,
-  note: i % 7 === 0 ? 'Focus on the face expression' : '',
-  isUrgent: i % 5 === 0
-}))
+import { fetchIGPosts, type IGPost } from '@/lib/airtable'
+import { Instagram } from 'react-content-loader'
+import { Video as VideoComponent } from './Video'
+import { ErrorBoundary } from './ErrorBoundary'
+import { VideoIcon } from './VideoIcon'
+import Link from 'next/link'
 
 const ITEMS_PER_LOAD = 9
 
@@ -63,15 +63,106 @@ const getCelebrationMessage = () => {
   return messages[Math.floor(Math.random() * messages.length)]
 }
 
+const getEmbedUrl = (url: string | null) => {
+  if (!url) return null;
+  
+  // Extract file ID from Google Drive URL
+  const match = url.match(/\/d\/([^/]+)/);
+  if (!match) return null;
+  
+  const fileId = match[1];
+  // Convert to preview URL format
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+};
+
+const TaskCard = ({ task, index }: { task: IGPost; index?: number }) => {
+  const getVideoUrl = (url: string) => {
+    if (!url || url === 'No video URL') return null;
+
+    // Extract file ID from Google Drive URL
+    const fileId = url.match(/[-\w]{25,}/);
+    return fileId 
+      ? `https://drive.google.com/file/d/${fileId[0]}/preview`
+      : url;
+  };
+
+  const videoUrl = task['Instagram GDrive'];
+  const embedUrl = videoUrl ? getVideoUrl(videoUrl) : null;
+
+  return (
+    <motion.div
+      className="relative bg-white rounded-lg shadow-md overflow-hidden"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index ? index * 0.1 : 0 }}
+    >
+      <CardContent>
+        {embedUrl && (
+          <div className="relative w-[315px] mx-auto pt-[177.77%] mb-4">
+            <iframe
+              src={embedUrl}
+              className="absolute top-0 left-0 w-full h-full rounded-lg"
+              allow="autoplay"
+              allowFullScreen
+              frameBorder="0"
+            />
+          </div>
+        )}
+        
+        <div className="flex justify-between mt-4">
+          <Button variant="outline">
+            <a 
+              href={videoUrl || '#'} 
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Upload to Google Drive
+            </a>
+          </Button>
+          <Button>Done</Button>
+        </div>
+      </CardContent>
+    </motion.div>
+  );
+};
+
+interface Task {
+  id: string;
+  title: string;
+  caption?: string;
+  deadline?: string;
+  "Instagram GDrive"?: string;
+  isUrgent?: boolean;
+  notes?: string;
+  status?: string;
+}
+
 export default function DailyTasks() {
-  const [tasks, setTasks] = useState(() => generateTasks(ITEMS_PER_LOAD, 1))
-  const [loading, setLoading] = useState(false)
+  const [tasks, setTasks] = useState<IGPost[]>([])
+  const [loading, setLoading] = useState(true)
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentType>('all')
   const [showConfetti, setShowConfetti] = useState(false)
   const [celebrationMessage, setCelebrationMessage] = useState('')
   const [confettiColors, setConfettiColors] = useState<string[]>([])
   const loader = useRef(null)
   const nextIdRef = useRef(ITEMS_PER_LOAD + 1)
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      setLoading(true)
+      try {
+        const igPosts = await fetchIGPosts()
+        setTasks(igPosts)
+      } catch (error) {
+        console.error('Error loading tasks:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadTasks()
+  }, [])
 
   const handleObserver = (entities: IntersectionObserverEntry[]) => {
     const target = entities[0]
@@ -141,135 +232,59 @@ export default function DailyTasks() {
   const todoTasks = filteredTasks.filter(task => !task.uploaded)
   const doneTasks = filteredTasks.filter(task => task.uploaded)
 
-  const TaskCard = ({ task }: { task: typeof tasks[0] }) => (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ 
-        opacity: 1, 
-        y: 0,
-        scale: task.uploaded ? 0.98 : 1,
-        transition: { type: "spring", stiffness: 300, damping: 25 }
-      }}
-      exit={{ 
-        opacity: 0,
-        x: task.uploaded ? 300 : -300,
-        transition: { duration: 0.5 }
-      }}
-      whileHover={{ scale: 1.02 }}
-      className={`
-        bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-300 
-        ${task.uploaded ? 'border-green-500' : ''}
-        ${task.transitioning ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}
-      `}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center">
-            {task.type === 'image' && <ImageIcon className="text-blue-500 mr-2" />}
-            {task.type === 'video' && <Video className="text-green-500 mr-2" />}
-            {task.type === 'story' && <FileText className="text-purple-500 mr-2" />}
-            <h3 className="font-medium text-gray-800 dark:text-white">{task.title}</h3>
-          </div>
-          <Badge variant={task.isUrgent ? "destructive" : "secondary"} className="flex items-center">
-            {task.isUrgent ? (
-              <>
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Urgent
-              </>
-            ) : (
-              'Regular'
-            )}
-          </Badge>
-        </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <div className="mb-2 aspect-square relative overflow-hidden rounded-md cursor-pointer">
-              {task.type === 'image' && (
-                <Image 
-                  src={task.preview} 
-                  alt={task.title} 
-                  layout="fill" 
-                  objectFit="cover"
-                />
-              )}
-              {task.type === 'video' && (
-                <div className="flex items-center justify-center h-full bg-gray-200 dark:bg-gray-700">
-                  <Video className="w-12 h-12 text-gray-400" />
-                </div>
-              )}
-              {task.type === 'story' && (
-                <div className="flex items-center justify-center h-full bg-gray-200 dark:bg-gray-700">
-                  <FileText className="w-12 h-12 text-gray-400" />
-                </div>
-              )}
-            </div>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            {task.type === 'image' && (
-              <Image 
-                src={task.preview} 
-                alt={task.title} 
-                width={400}
-                height={400}
-                layout="responsive"
-              />
-            )}
-            {task.type === 'video' && (
-              <iframe
-                src={task.preview}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full aspect-video"
-              ></iframe>
-            )}
-            {task.type === 'story' && (
-              <div className="flex items-center justify-center h-64 bg-gray-200 dark:bg-gray-700">
-                <a 
-                  href={task.preview} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
-                >
-                  <ExternalLink className="w-6 h-6 mr-2" />
-                  View Instagram Reel
-                </a>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-        <div className="flex items-center justify-between mt-2">
-          <a
-            href="https://drive.google.com/drive/my-drive"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            <Upload className="w-4 h-4 mr-1" />
-            Upload to Drive
-          </a>
-          <div className="flex items-center">
-            <span className="mr-2 text-sm">Done</span>
-            <Switch
-              checked={task.uploaded}
-              onCheckedChange={() => handleUploadToggle(task.id)}
-              aria-label="Toggle upload status"
-            />
-          </div>
-        </div>
-        {task.note && (
-          <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900 rounded-md text-sm">
-            <p className="text-gray-800 dark:text-gray-200">{task.note}</p>
-          </div>
-        )}
-      </CardContent>
-    </motion.div>
-  )
-
   const getRandomColors = () => {
     const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#ff99c8', '#fcf6bd', '#d0f4de', '#a9def9', '#e4c1f9']
     return colors.sort(() => 0.5 - Math.random()).slice(0, 5)
   }
+
+  useEffect(() => {
+    console.log('All tasks:', tasks);
+    tasks.forEach((task, index) => {
+      console.log(`Task ${index} gdrive URL:`, task.gdrive);
+    });
+  }, [tasks]);
+
+  useEffect(() => {
+    // Log the first task with all its fields
+    console.log('First task with all fields:', tasks[0]);
+    // Log all available field names
+    if (tasks[0]) {
+      console.log('Available fields:', Object.keys(tasks[0]));
+    }
+  }, [tasks]);
+
+  useEffect(() => {
+    // Debug log to see which tasks have videos
+    tasks.forEach((task, index) => {
+      console.log(`Task ${index} - ${task.title}:`, {
+        hasVideo: !!task.gdrive,
+        url: task.gdrive || 'No video URL'
+      });
+    });
+  }, [tasks]);
+
+  useEffect(() => {
+    // Debug log to see what URLs we're getting
+    tasks.forEach((task, index) => {
+      console.log(`Task ${index} video URL:`, {
+        raw: task["Instagram GDrive"],
+        converted: task["Instagram GDrive"]?.replace('/view', '/preview')
+      });
+    });
+  }, [tasks]);
+
+  useEffect(() => {
+    // Debug log to see the URLs we're generating
+    tasks.forEach((task, index) => {
+      const originalUrl = task["Instagram GDrive"];
+      const embedUrl = getEmbedUrl(originalUrl);
+      console.log(`Task ${index}:`, {
+        title: task.title,
+        original: originalUrl,
+        embed: embedUrl
+      });
+    });
+  }, [tasks]);
 
   return (
     <Card className="mb-6">
@@ -330,9 +345,17 @@ export default function DailyTasks() {
           <TabsContent value="todo">
             <AnimatePresence mode="popLayout">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {todoTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} />
-                ))}
+                {todoTasks.map((task, index) => {
+                  console.log(`Task ${index}:`, task);
+                  
+                  const videoUrl = task["Instagram GDrive"];
+                  
+                  console.log(`Task ${index} raw URL:`, videoUrl);
+                  
+                  return (
+                    <TaskCard key={task.id} task={task} index={index} />
+                  );
+                })}
               </div>
             </AnimatePresence>
           </TabsContent>
