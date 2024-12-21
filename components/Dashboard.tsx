@@ -1,29 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import DailyTasks from './DailyTasks'
-import ProgressTracker from './ProgressTracker'
-import ThemeToggle from './ThemeToggle'
+import DailyTasks from '@/components/DailyTasks'
 
 export default function Dashboard() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-
   return (
-    <div className={`p-4 sm:p-6 lg:p-8 ${theme === 'dark' ? 'dark' : ''}`}>
-      <div className="max-w-7xl mx-auto">
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Model Portal</h1>
-          <ThemeToggle theme={theme} setTheme={setTheme} />
-        </header>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <DailyTasks />
-          </div>
-          <div>
-            <ProgressTracker />
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-pink-50">
+      <main className="flex-1 container px-4 sm:px-6 mx-auto">
+        <DailyTasks />
+      </main>
     </div>
   )
 }

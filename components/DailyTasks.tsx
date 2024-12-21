@@ -30,7 +30,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { VideoIcon } from './VideoIcon'
 import Link from 'next/link'
 
-const ITEMS_PER_LOAD = 9
+const ITEMS_PER_PAGE = 3; // Initial and subsequent load amount
 
 type ContentType = 'all' | 'image' | 'video' | 'story'
 
@@ -75,20 +75,23 @@ const getEmbedUrl = (url: string | null) => {
   return `https://drive.google.com/file/d/${fileId}/preview`;
 };
 
-const TaskCard = ({ task, index }: { task: IGPost; index?: number }) => {
+interface TaskCardProps {
+  task: IGPost;
+  index?: number;
+  onDone: (taskId: string, done: boolean) => Promise<void>;
+}
+
+const TaskCard = ({ task, index, onDone }: TaskCardProps) => {
   const [isDone, setIsDone] = useState(task['Done Meli'] || false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
     setIsUpdating(true);
     try {
-      const success = await updateDoneStatus(task.id.toString(), checked);
-      if (success) {
-        setIsDone(checked);
-      }
+      await onDone(task.id.toString(), checked);
+      setIsDone(checked);
     } catch (error) {
-      console.error('Error updating done status:', error);
+      console.error('Error toggling done status:', error);
     }
     setIsUpdating(false);
   };
@@ -106,44 +109,24 @@ const TaskCard = ({ task, index }: { task: IGPost; index?: number }) => {
   const uploadUrl = task['Upload Content Meli'];
   const embedUrl = videoUrl ? getVideoUrl(videoUrl) : null;
 
-  // Get the thumbnail URL from the first attachment
-  const thumbnailUrl = task.Thumbnail?.[0]?.url;
-
   return (
     <motion.div
       className="relative bg-white rounded-lg shadow-md overflow-hidden w-full max-w-[315px]"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index ? index * 0.1 : 0 }}
+      exit={{ opacity: 0, y: -20 }}
     >
       <CardContent className="p-3">
         {embedUrl && (
           <div className="relative w-full pt-[177.77%] mb-3">
-            {!isPlaying && thumbnailUrl ? (
-              <div 
-                className="absolute top-0 left-0 w-full h-full cursor-pointer"
-                onClick={() => setIsPlaying(true)}
-              >
-                <img 
-                  src={thumbnailUrl} 
-                  alt={task.title}
-                  className="w-full h-full object-cover rounded-lg"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-12 h-12 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                    <Play className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <iframe
-                src={embedUrl}
-                className="absolute top-0 left-0 w-full h-full rounded-lg"
-                allow="autoplay"
-                allowFullScreen
-                frameBorder="0"
-              />
-            )}
+            <iframe
+              src={embedUrl}
+              className="absolute top-0 left-0 w-full h-full rounded-lg"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              frameBorder="0"
+            />
           </div>
         )}
         
@@ -191,256 +174,210 @@ interface Task {
 }
 
 export default function DailyTasks() {
-  const [tasks, setTasks] = useState<IGPost[]>([])
-  const [loading, setLoading] = useState(true)
-  const [contentTypeFilter, setContentTypeFilter] = useState<ContentType>('all')
-  const [showConfetti, setShowConfetti] = useState(false)
-  const [celebrationMessage, setCelebrationMessage] = useState('')
-  const [confettiColors, setConfettiColors] = useState<string[]>([])
-  const loader = useRef(null)
-  const nextIdRef = useRef(ITEMS_PER_LOAD + 1)
+  const [tasks, setTasks] = useState<IGPost[]>([]);
+  const [displayedItems, setDisplayedItems] = useState<number>(ITEMS_PER_PAGE);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [activeTab, setActiveTab] = useState<'todo' | 'done'>('todo');
+  const [contentTypeFilter, setContentTypeFilter] = useState<'all' | 'image' | 'video' | 'story'>('all');
+  const observerTarget = useRef(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [celebrationMessage, setCelebrationMessage] = useState('');
 
-  useEffect(() => {
-    const loadTasks = async () => {
-      setLoading(true)
-      try {
-        const igPosts = await fetchIGPosts()
-        setTasks(igPosts)
-      } catch (error) {
-        console.error('Error loading tasks:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadTasks()
-  }, [])
-
-  const handleObserver = (entities: IntersectionObserverEntry[]) => {
-    const target = entities[0]
-    if (target.isIntersecting && !loading) {
-      loadMoreTasks()
-    }
-  }
-
-  useEffect(() => {
-    const option = {
-      root: null,
-      rootMargin: "20px",
-      threshold: 0
-    }
-    const observer = new IntersectionObserver(handleObserver, option)
-    if (loader.current) observer.observe(loader.current)
-    return () => observer.disconnect()
-  }, [])
-
-  const loadMoreTasks = () => {
-    setLoading(true)
-    setTimeout(() => {
-      setTasks(prevTasks => [...prevTasks, ...generateTasks(ITEMS_PER_LOAD, nextIdRef.current)])
-      nextIdRef.current += ITEMS_PER_LOAD
-      setLoading(false)
-    }, 500) // Simulating API delay
-  }
-
-  const handleUploadToggle = (id: number) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === id ? { ...task, uploaded: !task.uploaded, transitioning: true } : task
-      )
-    )
-    
-    setTimeout(() => {
-      setTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === id ? { ...task, transitioning: false } : task
-        )
-      )
-    }, 300)
-
-    if (!tasks.find(task => task.id === id)?.uploaded) {
-      setShowConfetti(true)
-      setCelebrationMessage(getCelebrationMessage())
-      setTimeout(() => {
-        setShowConfetti(false)
-        setCelebrationMessage('')
-      }, 3000)
-    }
-  }
-
-  // Remove this function
-  // const handleNoteUpdate = (id: number, note: string) => {
-  //   setTasks(prevTasks =>
-  //     prevTasks.map(task =>
-  //       task.id === id ? { ...task, note } : task
-  //     )
-  //   )
-  // }
-
+  // Filter tasks first
   const filteredTasks = tasks
-  .filter(task => contentTypeFilter === 'all' || task.type === contentTypeFilter)
-  .sort((a, b) => (b.isUrgent ? 1 : 0) - (a.isUrgent ? 1 : 0))
+    .filter(task => {
+      return task && 
+        task['Instagram GDrive'] &&
+        (contentTypeFilter === 'all' || task.type === contentTypeFilter);
+    })
+    .sort((a, b) => (b.isUrgent ? 1 : 0) - (a.isUrgent ? 1 : 0));
 
-  const todoTasks = filteredTasks.filter(task => !task.uploaded)
-  const doneTasks = filteredTasks.filter(task => task.uploaded)
-
-  const getRandomColors = () => {
-    const colors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#ff99c8', '#fcf6bd', '#d0f4de', '#a9def9', '#e4c1f9']
-    return colors.sort(() => 0.5 - Math.random()).slice(0, 5)
-  }
-
-  useEffect(() => {
-    console.log('All tasks:', tasks);
-    tasks.forEach((task, index) => {
-      console.log(`Task ${index} gdrive URL:`, task.gdrive);
-    });
-  }, [tasks]);
+  const todoTasks = filteredTasks.filter(task => !task['Done Meli']);
+  const doneTasks = filteredTasks.filter(task => task['Done Meli']);
+  const currentTasks = activeTab === 'todo' ? todoTasks : doneTasks;
+  const visibleTasks = currentTasks.slice(0, displayedItems);
+  const hasMore = visibleTasks.length < currentTasks.length;
 
   useEffect(() => {
-    // Log the first task with all its fields
-    console.log('First task with all fields:', tasks[0]);
-    // Log all available field names
-    if (tasks[0]) {
-      console.log('Available fields:', Object.keys(tasks[0]));
+    const fetchTasks = async () => {
+      const allTasks = await fetchIGPosts();
+      setTasks(allTasks);
+      setIsLoading(false);
+    };
+    fetchTasks();
+  }, []);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
+          setIsLoadingMore(true);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setDisplayedItems(prev => {
+            const nextValue = prev + ITEMS_PER_PAGE;
+            return nextValue <= currentTasks.length ? nextValue : prev;
+          });
+          setIsLoadingMore(false);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current && hasMore) {
+      observer.observe(observerTarget.current);
     }
-  }, [tasks]);
 
-  useEffect(() => {
-    // Debug log to see which tasks have videos
-    tasks.forEach((task, index) => {
-      console.log(`Task ${index} - ${task.title}:`, {
-        hasVideo: !!task.gdrive,
-        url: task.gdrive || 'No video URL'
-      });
-    });
-  }, [tasks]);
+    return () => observer.disconnect();
+  }, [hasMore, currentTasks.length, isLoadingMore]);
 
+  // Reset displayed items when switching tabs or filters
   useEffect(() => {
-    // Debug log to see what URLs we're getting
-    tasks.forEach((task, index) => {
-      console.log(`Task ${index} video URL:`, {
-        raw: task["Instagram GDrive"],
-        converted: task["Instagram GDrive"]?.replace('/view', '/preview')
-      });
-    });
-  }, [tasks]);
+    setDisplayedItems(ITEMS_PER_PAGE);
+  }, [activeTab, contentTypeFilter]);
 
-  useEffect(() => {
-    // Debug log to see the URLs we're generating
-    tasks.forEach((task, index) => {
-      const originalUrl = task["Instagram GDrive"];
-      const embedUrl = getEmbedUrl(originalUrl);
-      console.log(`Task ${index}:`, {
-        title: task.title,
-        original: originalUrl,
-        embed: embedUrl
-      });
-    });
-  }, [tasks]);
+  const handleTaskDone = async (taskId: string, done: boolean) => {
+    try {
+      const success = await updateDoneStatus(taskId, done);
+      if (success) {
+        setTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id.toString() === taskId 
+              ? { ...task, 'Done Meli': done, uploaded: done } 
+              : task
+          )
+        );
+
+        if (done) {
+          setShowConfetti(true);
+          setCelebrationMessage('Task completed! 🎉');
+          setTimeout(() => {
+            setShowConfetti(false);
+            setCelebrationMessage('');
+          }, 3000);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
+  // Calculate progress
+  const totalTasks = filteredTasks.length;
+  const completedTasks = doneTasks.length;
+  const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Today's Content</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <MotivationalMessage todoCount={todoTasks.length} doneCount={doneTasks.length} />
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-2">Filter by Content Type</h3>
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-            <Button
-              variant={contentTypeFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setContentTypeFilter('all')}
-              className="flex items-center justify-center w-full sm:w-auto"
-            >
-              <span className="mr-2">All</span>
-              <Badge>{filteredTasks.length}</Badge>
-            </Button>
-            <Button
-              variant={contentTypeFilter === 'image' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setContentTypeFilter('image')}
-              className="flex items-center justify-center w-full sm:w-auto"
-            >
-              <ImageIcon className="mr-2 h-4 w-4" />
-              <span className="mr-2">Images</span>
-              <Badge>{tasks.filter(t => t.type === 'image').length}</Badge>
-            </Button>
-            <Button
-              variant={contentTypeFilter === 'video' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setContentTypeFilter('video')}
-              className="flex items-center justify-center w-full sm:w-auto"
-            >
-              <Video className="mr-2 h-4 w-4" />
-              <span className="mr-2">Videos</span>
-              <Badge>{tasks.filter(t => t.type === 'video').length}</Badge>
-            </Button>
-            <Button
-              variant={contentTypeFilter === 'story' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setContentTypeFilter('story')}
-              className="flex items-center justify-center w-full sm:w-auto"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              <span className="mr-2">Reels</span>
-              <Badge>{tasks.filter(t => t.type === 'story').length}</Badge>
-            </Button>
+    <div className="py-6 max-w-7xl mx-auto px-4">
+      {/* Progress Section */}
+      <div className="mb-8 max-w-[640px] mx-auto">
+        <div className="bg-gradient-to-r from-purple-400 to-pink-500 rounded-xl p-6 text-white">
+          <h2 className="text-2xl font-bold mb-2">Today's Progress</h2>
+          <p className="mb-4">{totalTasks} tasks to conquer! Let's get started! 💪</p>
+          <div className="w-full bg-white/30 rounded-full h-2">
+            <div 
+              className="bg-white h-2 rounded-full transition-all duration-500"
+              style={{ width: `${progressPercentage}%` }}
+            />
           </div>
+          <p className="mt-2 text-white/90">
+            {completedTasks} of {totalTasks} tasks completed
+          </p>
         </div>
-        <Tabs defaultValue="todo" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="todo">To-Do ({todoTasks.length})</TabsTrigger>
-            <TabsTrigger value="done">Done ({doneTasks.length})</TabsTrigger>
-          </TabsList>
-          <TabsContent value="todo">
-            <AnimatePresence mode="popLayout">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {todoTasks.map((task, index) => {
-                  console.log(`Task ${index}:`, task);
-                  
-                  const videoUrl = task["Instagram GDrive"];
-                  
-                  console.log(`Task ${index} raw URL:`, videoUrl);
-                  
-                  return (
-                    <TaskCard key={task.id} task={task} index={index} />
-                  );
-                })}
-              </div>
-            </AnimatePresence>
-          </TabsContent>
-          <TabsContent value="done">
-            <AnimatePresence mode="popLayout">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {doneTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} />
-                ))}
-              </div>
-            </AnimatePresence>
-          </TabsContent>
-        </Tabs>
-        <div ref={loader} className="h-10 flex items-center justify-center">
-          {loading && <p>Loading more...</p>}
+      </div>
+
+      {/* Filter Section */}
+      <div className="mb-6 max-w-[640px] mx-auto">
+        <h3 className="text-lg font-semibold mb-2">Filter by Content Type</h3>
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant={contentTypeFilter === 'all' ? 'default' : 'outline'}
+            onClick={() => setContentTypeFilter('all')}
+          >
+            All {totalTasks}
+          </Button>
+          <Button 
+            variant={contentTypeFilter === 'image' ? 'default' : 'outline'}
+            onClick={() => setContentTypeFilter('image')}
+          >
+            Images {tasks.filter(t => t.type === 'image').length}
+          </Button>
+          <Button 
+            variant={contentTypeFilter === 'video' ? 'default' : 'outline'}
+            onClick={() => setContentTypeFilter('video')}
+          >
+            Videos {tasks.filter(t => t.type === 'video').length}
+          </Button>
+          <Button 
+            variant={contentTypeFilter === 'story' ? 'default' : 'outline'}
+            onClick={() => setContentTypeFilter('story')}
+          >
+            Reels {tasks.filter(t => t.type === 'story').length}
+          </Button>
         </div>
-      </CardContent>
+      </div>
+
+      {/* Tabs Section */}
+      <div className="mb-6 max-w-[640px] mx-auto">
+        <div className="flex gap-2">
+          <Button 
+            variant={activeTab === 'todo' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('todo')}
+            className={`${activeTab === 'todo' ? 'bg-[#0A0D14] text-white hover:bg-[#0A0D14]/90' : ''}`}
+          >
+            To-Do ({todoTasks.length})
+          </Button>
+          <Button 
+            variant={activeTab === 'done' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('done')}
+            className={`${activeTab === 'done' ? 'bg-[#0A0D14] text-white hover:bg-[#0A0D14]/90' : ''}`}
+          >
+            Done ({doneTasks.length})
+          </Button>
+        </div>
+      </div>
+
+      {/* Tasks Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 place-items-center">
+        <AnimatePresence>
+          {visibleTasks.map((task, index) => (
+            <TaskCard 
+              key={task.id} 
+              task={task} 
+              index={index}
+              onDone={handleTaskDone}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Observer target - always present but only shows loading indicator when needed */}
+      <div ref={observerTarget} className="w-full py-8 flex justify-center">
+        {hasMore && isLoadingMore && (
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        )}
+      </div>
+
       {showConfetti && (
         <ReactConfetti
           width={window.innerWidth}
           height={window.innerHeight}
           recycle={false}
           numberOfPieces={200}
-          gravity={0.1}
         />
       )}
+      
       {celebrationMessage && (
-        <div className="fixed bottom-4 right-4 z-50 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border-2 border-green-500 animate-bounce">
-          <p className="text-lg font-bold text-green-600 dark:text-green-400">{celebrationMessage}</p>
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
+          {celebrationMessage}
         </div>
       )}
-    </Card>
-  )
+    </div>
+  );
 }
 
