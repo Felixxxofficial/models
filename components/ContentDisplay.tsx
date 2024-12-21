@@ -10,6 +10,8 @@ type ContentProps = {
 }
 
 export default function ContentDisplay({ content, type }: ContentProps) {
+  const [showDialog, setShowDialog] = React.useState(false);
+
   // Handle Instagram content
   if (type === 'instagram' && 'Instagram GDrive' in content) {
     if (content['Instagram GDrive']) {
@@ -23,21 +25,19 @@ export default function ContentDisplay({ content, type }: ContentProps) {
   }
 
   // Handle Reddit content
-  if (type === 'reddit' && 'Media' in content) {
-    if (content.Media === 'video' && content['URL Gdrive']) {
+  if (type === 'reddit' && isRedditPost(content)) {
+    if (content.Media === 'Gif/Video' && content['URL Gdrive']) {
       return (
         <div className="touch-none" style={{ touchAction: 'none' }}>
           <VideoPlayer src={content['URL Gdrive']} />
         </div>
       )
-    }
-
-    if (content.Media === 'image' && content.Image?.[0]?.url) {
+    } else if (content.Media === 'Image' && content.Image?.[0]?.url) {
       return (
-        <div className="relative w-full pt-[100%] bg-gray-100 rounded-lg overflow-hidden">
+        <div className="relative aspect-square">
           <Image
             src={content.Image[0].url}
-            alt="Reddit image"
+            alt={content.Title || ''}
             fill
             className="object-cover"
           />
