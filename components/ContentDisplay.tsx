@@ -3,7 +3,24 @@ import Image from 'next/image';
 import { Dialog, DialogContent } from './ui/dialog';
 import { Video, FileVideo, Play } from 'lucide-react';
 import VideoPlayer from './VideoPlayer';
-import type { IGPost, RedditPost } from '../types/airtable';
+
+// Define types inline
+interface IGPost {
+  id: string;
+  caption?: string;
+  'Instagram GDrive'?: string;
+  'Done Meli': boolean;
+}
+
+interface RedditPost {
+  id: string;
+  Title: string;
+  Link: string;
+  Media: 'Image' | 'Gif/Video';
+  Image?: Array<{ url: string }>;
+  'URL Gdrive'?: string;
+  'Done Meli': boolean;
+}
 
 interface ContentDisplayProps {
   content: IGPost | RedditPost;
