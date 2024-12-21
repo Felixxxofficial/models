@@ -201,9 +201,17 @@ export default function DailyTasks() {
 
   useEffect(() => {
     const fetchTasks = async () => {
-      const allTasks = await fetchIGPosts();
-      setTasks(allTasks);
-      setIsLoading(false);
+      try {
+        setIsLoading(true);
+        const allTasks = await fetchIGPosts();
+        console.log('Fetched tasks:', allTasks.length); // Debug log
+        setTasks(allTasks);
+      } catch (error) {
+        console.error('Error in component:', error);
+        // Optionally show error to user
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchTasks();
   }, []);
