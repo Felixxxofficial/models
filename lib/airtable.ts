@@ -1,4 +1,4 @@
-import Airtable, { Record, FieldSet } from 'airtable';
+import Airtable from 'airtable';
 
 interface AirtableAttachment {
   id: string;
@@ -6,6 +6,11 @@ interface AirtableAttachment {
   filename: string;
   size: number;
   type: string;
+}
+
+interface AirtableRecord {
+  id: string;
+  get(field: string): any;
 }
 
 export interface IGPost {
@@ -24,9 +29,7 @@ export interface IGPost {
   uploaded: boolean;
 }
 
-// Add default view name as fallback
 const DEFAULT_VIEW = 'Grid view';
-
 let airtableBase: any = null;
 
 function getAirtableBase() {
@@ -86,7 +89,7 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
 
     console.log('Fetched records:', records.length);
 
-    return records.map((record: Record<FieldSet>) => ({
+    return records.map((record: AirtableRecord) => ({
       id: record.id,
       title: record.get('Title') as string || '',
       caption: record.get('Caption') as string || '',
