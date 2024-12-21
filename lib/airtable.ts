@@ -79,7 +79,6 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
       throw new Error('Could not initialize Airtable base');
     }
 
-    // Add authentication headers explicitly
     const headers = {
       Authorization: `Bearer ${process.env.NEXT_PUBLIC_AIRTABLE_API_KEY}`,
     };
@@ -124,7 +123,7 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
           return null;
         }
       })
-      .filter((record): record is IGPost => record !== null);
+      .filter((record: IGPost | null): record is IGPost => record !== null);
 
     return processedRecords;
   } catch (error) {
