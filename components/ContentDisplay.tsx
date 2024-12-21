@@ -57,7 +57,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   }
 
   // Handle Instagram content
-  if (type === 'instagram' && 'Instagram GDrive' in content) {
+  if (type === 'instagram' && 'Instagram GDrive' in content && content['Instagram GDrive']) {
     return (
       <div className="touch-none" style={{ touchAction: 'none' }}>
         <VideoPlayer src={content['Instagram GDrive']} />
