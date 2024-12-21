@@ -43,7 +43,14 @@ function getAirtableBase() {
     return null;
   }
 
-  airtableBase = new Airtable({ apiKey }).base(baseId);
+  Airtable.configure({
+    apiKey: apiKey,
+    endpointUrl: 'https://api.airtable.com',
+    apiVersion: '0.1.0',
+    noRetryIfRateLimited: false
+  });
+
+  airtableBase = new Airtable().base(baseId);
   return airtableBase;
 }
 
@@ -51,22 +58,33 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
   try {
     const base = getAirtableBase();
     if (!base) {
-      console.error('Could not initialize Airtable base');
-      return [];
+      throw new Error('Could not initialize Airtable base');
     }
 
     const viewName = process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI || DEFAULT_VIEW;
     const tableId = process.env.NEXT_PUBLIC_AIRTABLE_IG;
 
     if (!tableId) {
-      console.error('Airtable table ID is not defined');
-      return [];
+      throw new Error('Airtable table ID is not defined');
     }
 
-    console.log('Using view:', viewName);
-    console.log('Table ID:', tableId);
+    console.log('Airtable Config:', {
+      baseId: process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID,
+      tableId: tableId,
+      viewName: viewName,
+      hasApiKey: !!process.env.NEXT_PUBLIC_AIRTABLE_API_KEY
+    });
 
-    const records = await base(tableId)
+    const table = base(tableId);
+    
+    const testQuery = await table.select({
+      maxRecords: 1,
+      view: viewName
+    }).firstPage();
+    
+    console.log('Test query successful:', !!testQuery);
+
+    const records = await table
       .select({
         view: viewName,
         maxRecords: 100,
@@ -82,30 +100,46 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
           'Thumbnail',
           'isUrgent',
           'Notes',
-          'Content Type'
+          'Content Type',
+          'Uploaded'
         ]
       })
       .all();
 
     console.log('Fetched records:', records.length);
 
-    return records.map((record: AirtableRecord) => ({
-      id: record.id,
-      title: record.get('Title') as string || '',
-      caption: record.get('Caption') as string || '',
-      status: record.get('Status') as string || '',
-      deadline: record.get('Deadline') as string || '',
-      'Instagram GDrive': record.get('Instagram GDrive') as string || '',
-      'Upload Content Meli': record.get('Upload Content Meli') as string || '',
-      'Done Meli': Boolean(record.get('Done Meli')),
-      Thumbnail: record.get('Thumbnail') as AirtableAttachment[] || [],
-      isUrgent: Boolean(record.get('isUrgent')),
-      notes: record.get('Notes') as string || '',
-      type: (record.get('Content Type') as 'image' | 'video' | 'story') || 'image',
-      uploaded: Boolean(record.get('Uploaded')),
-    }));
+    if (!records || records.length === 0) {
+      console.log('No records found');
+      return [];
+    }
+
+    return records.map((record: AirtableRecord) => {
+      try {
+        return {
+          id: record.id,
+          title: record.get('Title') as string || '',
+          caption: record.get('Caption') as string || '',
+          status: record.get('Status') as string || '',
+          deadline: record.get('Deadline') as string || '',
+          'Instagram GDrive': record.get('Instagram GDrive') as string || '',
+          'Upload Content Meli': record.get('Upload Content Meli') as string || '',
+          'Done Meli': Boolean(record.get('Done Meli')),
+          Thumbnail: record.get('Thumbnail') as AirtableAttachment[] || [],
+          isUrgent: Boolean(record.get('isUrgent')),
+          notes: record.get('Notes') as string || '',
+          type: (record.get('Content Type') as 'image' | 'video' | 'story') || 'image',
+          uploaded: Boolean(record.get('Uploaded')),
+        };
+      } catch (recordError) {
+        console.error('Error processing record:', record.id, recordError);
+        return null;
+      }
+    }).filter((record): record is IGPost => record !== null);
   } catch (error) {
     console.error('Error fetching IG posts:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message);
+    }
     return [];
   }
 }
