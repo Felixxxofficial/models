@@ -148,14 +148,20 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
   const uploadUrl = getUploadUrl(task);
   const embedUrl = mediaContent?.url ? getVideoUrl(mediaContent.url) : null;
 
+  const handleToggle = async (checked: boolean) => {
+    setIsUpdating(true);
+    try {
+      const isInstagram = isIGPost(task);
+      await onDone(task.id.toString(), checked, isInstagram);
+      setIsDone(checked);
+    } catch (error) {
+      console.error('Error toggling done status:', error);
+    }
+    setIsUpdating(false);
+  };
+
   return (
-    <motion.div
-      className="relative bg-white rounded-lg shadow-md overflow-hidden w-full"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index ? index * 0.1 : 0 }}
-      exit={{ opacity: 0, y: -20 }}
-    >
+    <Card className="overflow-hidden">
       <CardContent className="p-4">
         {type === 'reddit' && !mediaContent?.isVideo && mediaContent?.imageUrl && (
           <>
@@ -190,35 +196,17 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
           </div>
         )}
         
-        <div className="flex items-center justify-between gap-2 mt-2">
-          <Button 
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1 hover:bg-primary hover:text-primary-foreground transition-colors"
-            asChild
-          >
-            <a 
-              href={task['Upload Content Meli'] || '#'} 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1"
-            >
-              <Upload className="w-3 h-3" />
-              <span className="text-sm">Upload</span>
-            </a>
-          </Button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Done</span>
-            <Switch
-              checked={isDone}
-              onCheckedChange={handleToggle}
-              disabled={isUpdating}
-              className="scale-75"
-            />
-          </div>
+        <div className="flex justify-between items-center mb-2">
+          <Badge variant="outline">{type}</Badge>
+          <Switch 
+            checked={isDone}
+            onCheckedChange={handleToggle}
+            disabled={isUpdating}
+            className="scale-75"
+          />
         </div>
       </CardContent>
-    </motion.div>
+    </Card>
   );
 };
 
