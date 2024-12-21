@@ -78,8 +78,16 @@ const getEmbedUrl = (url: string | null) => {
   return `https://drive.google.com/file/d/${fileId}/preview`;
 };
 
+function isRedditPost(task: IGPost | RedditPost): task is RedditPost {
+  return 'Media' in task && 'Title' in task;
+}
+
+function isIGPost(task: IGPost | RedditPost): task is IGPost {
+  return 'Instagram GDrive' in task;
+}
+
 interface TaskCardProps {
-  task: IGPost;
+  task: IGPost | RedditPost;
   index?: number;
   onDone: (taskId: string, done: boolean, isInstagram: boolean) => Promise<void>;
   type: 'instagram' | 'reddit';
@@ -91,16 +99,9 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
-    console.log('Toggle task:', { 
-      id: task.id, 
-      type,
-      isInstagram: 'Instagram GDrive' in task,
-      checked 
-    });
-
     setIsUpdating(true);
     try {
-      const isInstagram = 'Instagram GDrive' in task;
+      const isInstagram = isIGPost(task);
       await onDone(task.id.toString(), checked, isInstagram);
       setIsDone(checked);
     } catch (error) {
@@ -118,15 +119,31 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
       : url;
   };
 
-  const isRedditVideo = type === 'reddit' && (task as RedditPost).Media === 'Gif/Video';
-  const imageUrl = type === 'reddit' && !isRedditVideo ? (task as RedditPost).Image?.[0]?.url : null;
-  const videoUrl = type === 'instagram' 
-    ? task['Instagram GDrive'] 
-    : isRedditVideo 
-      ? (task as RedditPost)['URL Gdrive']
-      : null;
+  const getMediaContent = () => {
+    if (isRedditPost(task)) {
+      if (task.Media === 'Gif/Video') {
+        return {
+          isVideo: true,
+          url: task['URL Gdrive']
+        };
+      } else if (task.Media === 'Image' && task.Image?.[0]?.url) {
+        return {
+          isVideo: false,
+          url: task.Image[0].url
+        };
+      }
+    } else if (isIGPost(task)) {
+      return {
+        isVideo: true,
+        url: task['Instagram GDrive']
+      };
+    }
+    return null;
+  };
+
+  const mediaContent = getMediaContent();
   const uploadUrl = task['Upload Content Meli'];
-  const embedUrl = videoUrl ? getVideoUrl(videoUrl) : null;
+  const embedUrl = mediaContent?.url ? getVideoUrl(mediaContent.url) : null;
 
   return (
     <motion.div
@@ -137,14 +154,14 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
       exit={{ opacity: 0, y: -20 }}
     >
       <CardContent className="p-4">
-        {type === 'reddit' && !isRedditVideo && imageUrl && (
+        {type === 'reddit' && !mediaContent?.isVideo && mediaContent?.imageUrl && (
           <>
             <div 
               className="relative w-full pt-[100%] mb-3 cursor-pointer"
               onClick={() => setIsLightboxOpen(true)}
             >
               <img
-                src={imageUrl}
+                src={mediaContent.imageUrl}
                 alt="Reddit content"
                 className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
               />
@@ -153,7 +170,7 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
             <ImageLightbox
               isOpen={isLightboxOpen}
               onClose={() => setIsLightboxOpen(false)}
-              imageUrl={imageUrl}
+              imageUrl={mediaContent.imageUrl}
             />
           </>
         )}
@@ -211,14 +228,6 @@ interface Task {
   isUrgent?: boolean;
   notes?: string;
   status?: string;
-}
-
-function isRedditPost(task: IGPost | RedditPost): task is RedditPost {
-  return 'Media' in task && 'Title' in task;
-}
-
-function isIGPost(task: IGPost | RedditPost): task is IGPost {
-  return 'Instagram GDrive' in task;
 }
 
 export default function DailyTasks() {
@@ -460,20 +469,24 @@ export default function DailyTasks() {
 
   // Update the type checking logic
   const getTaskDetails = (task: IGPost | RedditPost, type: 'instagram' | 'reddit') => {
-    const isRedditVideo = type === 'reddit' && isRedditPost(task) && task.Media === 'Gif/Video';
-    const imageUrl = type === 'reddit' && isRedditPost(task) && !isRedditVideo 
-      ? task.Image?.[0]?.url 
-      : null;
-    const videoUrl = type === 'instagram' && isIGPost(task)
-      ? task['Instagram GDrive']
-      : type === 'reddit' && isRedditPost(task) && isRedditVideo
-        ? task['URL Gdrive']
-        : null;
-
+    if (isRedditPost(task)) {
+      const isRedditVideo = task.Media === 'Gif/Video';
+      return {
+        isRedditVideo,
+        imageUrl: !isRedditVideo ? task.Image?.[0]?.url : null,
+        videoUrl: isRedditVideo ? task['URL Gdrive'] : null
+      };
+    } else if (isIGPost(task)) {
+      return {
+        isRedditVideo: false,
+        imageUrl: null,
+        videoUrl: task['Instagram GDrive']
+      };
+    }
     return {
-      isRedditVideo,
-      imageUrl,
-      videoUrl
+      isRedditVideo: false,
+      imageUrl: null,
+      videoUrl: null
     };
   };
 
