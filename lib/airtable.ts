@@ -24,6 +24,9 @@ export interface IGPost {
   uploaded: boolean;
 }
 
+// Add default view name as fallback
+const DEFAULT_VIEW = 'Grid view';
+
 // Initialize base at the top level
 if (!process.env.NEXT_PUBLIC_AIRTABLE_API_KEY) {
   throw new Error('Airtable API key is not defined');
@@ -39,19 +42,21 @@ const base = new Airtable({
 
 export async function fetchIGPosts(): Promise<IGPost[]> {
   try {
-    const viewName = process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI;
+    // Use default view if environment variable is not set
+    const viewName = process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI || DEFAULT_VIEW;
     
     if (!process.env.NEXT_PUBLIC_AIRTABLE_IG) {
       throw new Error('Airtable table ID is not defined');
     }
 
-    if (!viewName) {
-      throw new Error('Airtable view name is not defined');
-    }
+    console.log('Using view:', viewName); // Debug log
+    console.log('Table ID:', process.env.NEXT_PUBLIC_AIRTABLE_IG); // Debug log
 
     const records = await base(process.env.NEXT_PUBLIC_AIRTABLE_IG)
       .select({
         view: viewName,
+        maxRecords: 100, // Add a limit to prevent overwhelming
+        pageSize: 10 // Fetch in smaller batches
       })
       .all();
 
@@ -74,7 +79,8 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
     }));
   } catch (error) {
     console.error('Error fetching IG posts:', error);
-    throw error;
+    // Return empty array instead of throwing
+    return [];
   }
 }
 

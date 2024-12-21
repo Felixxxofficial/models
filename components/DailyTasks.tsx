@@ -183,6 +183,7 @@ export default function DailyTasks() {
   const observerTarget = useRef<HTMLDivElement>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [celebrationMessage, setCelebrationMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   // Filter tasks first
   const filteredTasks = tasks
@@ -203,12 +204,13 @@ export default function DailyTasks() {
     const fetchTasks = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const allTasks = await fetchIGPosts();
-        console.log('Fetched tasks:', allTasks.length); // Debug log
+        console.log('Fetched tasks:', allTasks.length);
         setTasks(allTasks);
-      } catch (error) {
-        console.error('Error in component:', error);
-        // Optionally show error to user
+      } catch (err) {
+        console.error('Error in component:', err);
+        setError('Failed to load tasks. Please try again later.');
       } finally {
         setIsLoading(false);
       }
@@ -285,7 +287,19 @@ export default function DailyTasks() {
   const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-red-600">
+        {error}
+      </div>
+    );
   }
 
   return (
