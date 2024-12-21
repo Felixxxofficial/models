@@ -31,6 +31,7 @@ import { VideoIcon } from './VideoIcon'
 import Link from 'next/link'
 import ContentDisplay from '@/components/ContentDisplay'
 import { ImageLightbox } from './ImageLightbox'
+import confetti from 'canvas-confetti';
 
 const ITEMS_PER_PAGE = 9; // Changed from 3 to 9
 
@@ -230,6 +231,8 @@ export default function DailyTasks() {
     images: 0,
     videos: 0
   });
+  const [showMessage, setShowMessage] = useState(false);
+  const [message, setMessage] = useState('');
 
   const fetchData = async () => {
     try {
@@ -376,6 +379,36 @@ export default function DailyTasks() {
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
       await updateDoneStatus(taskId, done, isInstagram);
+      
+      if (done) {
+        // Trigger confetti effect
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+
+        // Show random motivational message
+        const messages = [
+          "Amazing work! 🌟",
+          "You're crushing it! 💪",
+          "Keep up the great work! 🎉",
+          "You're on fire! 🔥",
+          "Fantastic job! ⭐",
+          "Way to go! 🚀",
+          "You're awesome! 🌈",
+          "Success looks good on you! 💫"
+        ];
+        
+        setMessage(messages[Math.floor(Math.random() * messages.length)]);
+        setShowMessage(true);
+        
+        // Hide message after 3 seconds
+        setTimeout(() => {
+          setShowMessage(false);
+        }, 3000);
+      }
+
       // Refresh data after updating
       await fetchData();
     } catch (error) {
@@ -552,6 +585,12 @@ export default function DailyTasks() {
       {celebrationMessage && (
         <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
           {celebrationMessage}
+        </div>
+      )}
+
+      {showMessage && (
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
+          {message}
         </div>
       )}
     </div>
