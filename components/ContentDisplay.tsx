@@ -31,6 +31,10 @@ function isRedditPost(content: IGPost | RedditPost): content is RedditPost {
   return 'Media' in content && 'Title' in content;
 }
 
+function isIGPost(content: IGPost | RedditPost): content is IGPost {
+  return 'Instagram GDrive' in content;
+}
+
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   const [showDialog, setShowDialog] = useState(false);
 
@@ -57,7 +61,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   }
 
   // Handle Instagram content
-  if (type === 'instagram' && typeof content['Instagram GDrive'] === 'string') {
+  if (type === 'instagram' && isIGPost(content) && typeof content['Instagram GDrive'] === 'string') {
     return (
       <div className="touch-none" style={{ touchAction: 'none' }}>
         <VideoPlayer src={content['Instagram GDrive']} />
