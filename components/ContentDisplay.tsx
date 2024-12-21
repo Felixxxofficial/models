@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Dialog, DialogContent } from './ui/dialog';
 import { Video, FileVideo, Play } from 'lucide-react';
-import { VideoPlayer } from './VideoPlayer';
+import VideoPlayer from './VideoPlayer';
 import type { IGPost, RedditPost } from '../types/airtable';
 
 interface ContentDisplayProps {
