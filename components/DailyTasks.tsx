@@ -222,6 +222,7 @@ interface Task {
 }
 
 export default function DailyTasks() {
+  const [tasks, setTasks] = useState<(IGPost | RedditPost)[]>([]);
   const [igTasks, setIgTasks] = useState<IGPost[]>([]);
   const [redditTasks, setRedditTasks] = useState<RedditPost[]>([]);
   const [displayedItems, setDisplayedItems] = useState(ITEMS_PER_PAGE);
@@ -303,7 +304,8 @@ export default function DailyTasks() {
   };
 
   const todoTasks = useMemo(() => {
-    let filtered = [];
+    let filtered: (IGPost | RedditPost)[] = [];
+    
     if (contentTypeFilter === 'all') {
       filtered = [...igTasks, ...redditTasks];
     } else if (contentTypeFilter === 'reels') {
@@ -311,10 +313,17 @@ export default function DailyTasks() {
     } else if (contentTypeFilter === 'image') {
       filtered = redditTasks.filter(task => task.Media === 'Image');
     } else if (contentTypeFilter === 'video') {
-      filtered = redditTasks.filter(task => task.Media === 'Gif/Video');
+      filtered = [
+        ...redditTasks.filter(task => task.Media === 'Gif/Video'),
+        ...igTasks
+      ];
     }
-    return filtered.filter(task => !task['Done Meli']);
-  }, [igTasks, redditTasks, contentTypeFilter]);
+
+    // Filter by done status
+    return filtered.filter(task => 
+      activeTab === 'done' ? task['Done Meli'] : !task['Done Meli']
+    );
+  }, [igTasks, redditTasks, contentTypeFilter, activeTab]);
 
   const doneTasks = useMemo(() => {
     let filtered = [];
