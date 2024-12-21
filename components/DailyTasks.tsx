@@ -142,7 +142,7 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
   };
 
   const mediaContent = getMediaContent();
-  const uploadUrl = task['Upload Content Meli'];
+  const uploadUrl = task['Upload Content Meli'] || null;
   const embedUrl = mediaContent?.url ? getVideoUrl(mediaContent.url) : null;
 
   return (
