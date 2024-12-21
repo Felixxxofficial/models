@@ -180,7 +180,7 @@ export default function DailyTasks() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<'todo' | 'done'>('todo');
   const [contentTypeFilter, setContentTypeFilter] = useState<'all' | 'image' | 'video' | 'story'>('all');
-  const observerTarget = useRef(null);
+  const observerTarget = useRef<HTMLDivElement>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [celebrationMessage, setCelebrationMessage] = useState('');
 
@@ -208,29 +208,37 @@ export default function DailyTasks() {
     fetchTasks();
   }, []);
 
-  // Intersection Observer for infinite scroll
+  // Intersection Observer setup
   useEffect(() => {
     const observer = new IntersectionObserver(
-      async (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
-          setIsLoadingMore(true);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          setDisplayedItems(prev => {
-            const nextValue = prev + ITEMS_PER_PAGE;
-            return nextValue <= currentTasks.length ? nextValue : prev;
-          });
-          setIsLoadingMore(false);
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && !isLoadingMore && hasMore) {
+          loadMore();
         }
       },
       { threshold: 0.1 }
     );
 
-    if (observerTarget.current && hasMore) {
-      observer.observe(observerTarget.current);
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
     }
 
-    return () => observer.disconnect();
-  }, [hasMore, currentTasks.length, isLoadingMore]);
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [isLoadingMore, hasMore]);
+
+  const loadMore = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setDisplayedItems((prev) => prev + ITEMS_PER_PAGE);
+      setIsLoadingMore(false);
+    }, 500); // Small delay for smooth loading
+  };
 
   // Reset displayed items when switching tabs or filters
   useEffect(() => {
@@ -356,10 +364,13 @@ export default function DailyTasks() {
         </AnimatePresence>
       </div>
 
-      {/* Observer target - always present but only shows loading indicator when needed */}
-      <div ref={observerTarget} className="w-full py-8 flex justify-center">
-        {hasMore && isLoadingMore && (
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      {/* Observer target and loading indicator */}
+      <div 
+        ref={observerTarget}
+        className="w-full h-20 flex items-center justify-center mt-4"
+      >
+        {isLoadingMore && (
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
         )}
       </div>
 
