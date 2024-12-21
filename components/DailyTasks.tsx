@@ -93,6 +93,16 @@ interface TaskCardProps {
   type: 'instagram' | 'reddit';
 }
 
+const getVideoUrl = (url: string) => {
+  // Extract file ID from Google Drive URL
+  const match = url.match(/\/d\/([^/]+)/);
+  if (!match) return url;
+  
+  const fileId = match[1];
+  // Convert to preview URL format
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+};
+
 const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
   const [isDone, setIsDone] = useState(task['Done Meli'] || false);
   const [isUpdating, setIsUpdating] = useState(false);
