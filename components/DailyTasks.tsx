@@ -141,8 +141,15 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
     return null;
   };
 
+  const getUploadUrl = (task: IGPost | RedditPost) => {
+    if ('Upload Content Meli' in task) {
+      return task['Upload Content Meli'];
+    }
+    return null;
+  };
+
   const mediaContent = getMediaContent();
-  const uploadUrl = task['Upload Content Meli'] || null;
+  const uploadUrl = getUploadUrl(task);
   const embedUrl = mediaContent?.url ? getVideoUrl(mediaContent.url) : null;
 
   return (
