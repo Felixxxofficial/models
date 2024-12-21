@@ -444,8 +444,8 @@ export default function DailyTasks() {
   // Add a log to check filtered tasks
   useEffect(() => {
     console.log('Current Reddit Tasks:', redditTasks);
-    console.log('Filtered Reddit Images:', redditTasks.filter(t => t.Media === 'image').length);
-    console.log('Filtered Reddit Videos:', redditTasks.filter(t => t.Media === 'video').length);
+    console.log('Filtered Reddit Images:', redditTasks.filter(t => t.Media === 'Image').length);
+    console.log('Filtered Reddit Videos:', redditTasks.filter(t => t.Media === 'Gif/Video').length);
   }, [redditTasks]);
 
   // Add this near your other useMemo hooks
