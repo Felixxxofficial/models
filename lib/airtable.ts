@@ -96,40 +96,37 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
         view: viewName,
         maxRecords: 100,
         pageSize: 10,
-        // Pass headers explicitly
         _options: { headers }
       })
       .all();
 
-    console.log('Fetched records:', records.length);
+    // Process records with proper type annotations
+    const processedRecords = records
+      .map((record: AirtableRecord): IGPost | null => {
+        try {
+          return {
+            id: record.id,
+            title: record.get('Title') as string || '',
+            caption: record.get('Caption') as string || '',
+            status: record.get('Status') as string || '',
+            deadline: record.get('Deadline') as string || '',
+            'Instagram GDrive': record.get('Instagram GDrive') as string || '',
+            'Upload Content Meli': record.get('Upload Content Meli') as string || '',
+            'Done Meli': Boolean(record.get('Done Meli')),
+            Thumbnail: record.get('Thumbnail') as AirtableAttachment[] || [],
+            isUrgent: Boolean(record.get('isUrgent')),
+            notes: record.get('Notes') as string || '',
+            type: (record.get('Content Type') as 'image' | 'video' | 'story') || 'image',
+            uploaded: Boolean(record.get('Uploaded')),
+          };
+        } catch (recordError) {
+          console.error('Error processing record:', record.id, recordError);
+          return null;
+        }
+      })
+      .filter((record): record is IGPost => record !== null);
 
-    if (!records || records.length === 0) {
-      console.log('No records found');
-      return [];
-    }
-
-    return records.map((record: AirtableRecord) => {
-      try {
-        return {
-          id: record.id,
-          title: record.get('Title') as string || '',
-          caption: record.get('Caption') as string || '',
-          status: record.get('Status') as string || '',
-          deadline: record.get('Deadline') as string || '',
-          'Instagram GDrive': record.get('Instagram GDrive') as string || '',
-          'Upload Content Meli': record.get('Upload Content Meli') as string || '',
-          'Done Meli': Boolean(record.get('Done Meli')),
-          Thumbnail: record.get('Thumbnail') as AirtableAttachment[] || [],
-          isUrgent: Boolean(record.get('isUrgent')),
-          notes: record.get('Notes') as string || '',
-          type: (record.get('Content Type') as 'image' | 'video' | 'story') || 'image',
-          uploaded: Boolean(record.get('Uploaded')),
-        };
-      } catch (recordError) {
-        console.error('Error processing record:', record.id, recordError);
-        return null;
-      }
-    }).filter((record): record is IGPost => record !== null);
+    return processedRecords;
   } catch (error) {
     console.error('Error fetching IG posts:', error);
     if (error instanceof Error) {
