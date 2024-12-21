@@ -35,7 +35,7 @@ import confetti from 'canvas-confetti';
 
 const ITEMS_PER_PAGE = 9; // Changed from 3 to 9
 
-type ContentType = 'all' | 'story' | 'image' | 'video';
+type ContentType = 'all' | 'story' | 'image' | 'video' | 'reels';
 
 const celebrationMessages = [
   "Amazing job! 🎉",
@@ -228,7 +228,7 @@ export default function DailyTasks() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<'todo' | 'done'>('todo');
-  const [contentTypeFilter, setContentTypeFilter] = useState<'all' | 'story' | 'image' | 'video'>('all');
+  const [contentTypeFilter, setContentTypeFilter] = useState<ContentType>('all');
   const observerTarget = useRef(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [celebrationMessage, setCelebrationMessage] = useState('');
@@ -276,31 +276,31 @@ export default function DailyTasks() {
     });
   }, [igTasks, redditTasks]);
 
-  // Filter tasks based on content type
-  const filteredTasks = useMemo(() => {
-    let tasks = [...igTasks, ...redditTasks];
-    
+  const getFilteredTasks = (tasks: (IGPost | RedditPost)[]) => {
     // First filter by done status
-    tasks = tasks.filter(task => {
-      const isDone = task['Done Meli'] === true;
-      return activeTab === 'done' ? isDone : !isDone;
-    });
+    const statusFilteredTasks = tasks.filter(task => 
+      activeTab === 'done' ? task['Done Meli'] : !task['Done Meli']
+    );
 
     // Then filter by content type
-    if (contentTypeFilter === 'reels') {
-      return tasks.filter(task => 'Instagram GDrive' in task);
-    } else if (contentTypeFilter === 'image') {
-      return tasks.filter(task => 
-        'Media' in task && task.Media === 'Image'
-      );
-    } else if (contentTypeFilter === 'video') {
-      return tasks.filter(task => 
-        'Media' in task && task.Media === 'Gif/Video'
-      );
+    switch (contentTypeFilter) {
+      case 'reels':
+        return statusFilteredTasks.filter(task => isIGPost(task));
+      case 'image':
+        return statusFilteredTasks.filter(task => 
+          isRedditPost(task) && task.Media === 'Image'
+        );
+      case 'video':
+        return statusFilteredTasks.filter(task => 
+          (isRedditPost(task) && task.Media === 'Gif/Video') || isIGPost(task)
+        );
+      case 'story':
+        // Add your story filtering logic here if needed
+        return statusFilteredTasks;
+      default:
+        return statusFilteredTasks;
     }
-
-    return tasks;
-  }, [igTasks, redditTasks, contentTypeFilter, activeTab]);
+  };
 
   const todoTasks = useMemo(() => {
     let filtered = [];
@@ -332,9 +332,9 @@ export default function DailyTasks() {
 
   const currentTasks = activeTab === 'todo' ? todoTasks : doneTasks;
   const visibleTasks = useMemo(() => {
-    return filteredTasks.slice(0, displayedItems);
-  }, [filteredTasks, displayedItems]);
-  const hasMore = visibleTasks.length < filteredTasks.length;
+    return getFilteredTasks(currentTasks).slice(0, displayedItems);
+  }, [currentTasks, contentTypeFilter, displayedItems]);
+  const hasMore = visibleTasks.length < getFilteredTasks(currentTasks).length;
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -358,8 +358,8 @@ export default function DailyTasks() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && !isLoadingMore && filteredTasks.length > displayedItems) {
-          console.log('Loading more items...', displayedItems, filteredTasks.length); // Debug log
+        if (entries[0].isIntersecting && !isLoadingMore && getFilteredTasks(currentTasks).length > displayedItems) {
+          console.log('Loading more items...', displayedItems, getFilteredTasks(currentTasks).length); // Debug log
           setIsLoadingMore(true);
           setDisplayedItems(prev => {
             const next = prev + ITEMS_PER_PAGE;
@@ -382,7 +382,7 @@ export default function DailyTasks() {
         observer.unobserve(currentTarget);
       }
     };
-  }, [isLoadingMore, displayedItems, filteredTasks.length]);
+  }, [isLoadingMore, displayedItems, getFilteredTasks(currentTasks).length]);
 
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
@@ -431,7 +431,7 @@ export default function DailyTasks() {
   };
 
   // Calculate progress
-  const totalTasks = filteredTasks.length;
+  const totalTasks = getFilteredTasks(currentTasks).length;
   const completedTasks = doneTasks.length;
   const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
@@ -596,7 +596,7 @@ export default function DailyTasks() {
       </div>
 
       {/* Observer target - show only if there are more items to load */}
-      {filteredTasks.length > displayedItems && (
+      {getFilteredTasks(currentTasks).length > displayedItems && (
         <div 
           ref={observerTarget}
           className="w-full h-20 flex items-center justify-center mt-4"
