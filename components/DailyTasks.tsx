@@ -319,14 +319,12 @@ export default function DailyTasks() {
       ];
     }
 
-    // Filter by done status
-    return filtered.filter(task => 
-      activeTab === 'done' ? task['Done Meli'] : !task['Done Meli']
-    );
-  }, [igTasks, redditTasks, contentTypeFilter, activeTab]);
+    return filtered.filter(task => !task['Done Meli']);
+  }, [igTasks, redditTasks, contentTypeFilter]);
 
   const doneTasks = useMemo(() => {
-    let filtered = [];
+    let filtered: (IGPost | RedditPost)[] = [];
+    
     if (contentTypeFilter === 'all') {
       filtered = [...igTasks, ...redditTasks];
     } else if (contentTypeFilter === 'reels') {
@@ -334,9 +332,13 @@ export default function DailyTasks() {
     } else if (contentTypeFilter === 'image') {
       filtered = redditTasks.filter(task => task.Media === 'Image');
     } else if (contentTypeFilter === 'video') {
-      filtered = redditTasks.filter(task => task.Media === 'Gif/Video');
+      filtered = [
+        ...redditTasks.filter(task => task.Media === 'Gif/Video'),
+        ...igTasks
+      ];
     }
-    return filtered.filter(task => task['Done Meli'] === true);
+
+    return filtered.filter(task => task['Done Meli']);
   }, [igTasks, redditTasks, contentTypeFilter]);
 
   const currentTasks = activeTab === 'todo' ? todoTasks : doneTasks;
