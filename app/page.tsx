@@ -1,9 +1,11 @@
-import Dashboard from '@/components/Dashboard'
+'use client'
+
+import DailyTasks from '@/components/DailyTasks'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-pink-100 to-purple-200">
-      <Dashboard />
+    <main>
+      <DailyTasks />
     </main>
   )
 }
