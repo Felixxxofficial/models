@@ -212,13 +212,8 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
 
 interface Task {
   id: string;
-  title: string;
-  caption?: string;
-  deadline?: string;
-  "Instagram GDrive"?: string;
-  isUrgent?: boolean;
-  notes?: string;
-  status?: string;
+  'Done Meli': boolean;
+  isInstagram: boolean;
 }
 
 export default function DailyTasks() {
@@ -397,48 +392,48 @@ export default function DailyTasks() {
 
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
-      await updateDoneStatus(taskId, done, isInstagram);
-      
-      if (done) {
-        // Trigger confetti effect
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
+      const response = await fetch('/api/updateTask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ taskId, done, isInstagram }),
+      });
 
-        // Show random motivational message
-        const messages = [
-          "Amazing work! 🌟",
-          "You're crushing it! 💪",
-          "Keep up the great work! 🎉",
-          "You're on fire! 🔥",
-          "Fantastic job! ⭐",
-          "Way to go! 🚀",
-          "You're awesome! 🌈",
-          "Success looks good on you! 💫"
-        ];
-        
-        setMessage(messages[Math.floor(Math.random() * messages.length)]);
-        setShowMessage(true);
-        
-        // Hide message after 3 seconds
-        setTimeout(() => {
-          setShowMessage(false);
-        }, 3000);
+      if (!response.ok) {
+        throw new Error('Failed to update task');
       }
 
-      // Refresh data after updating
-      await fetchData();
+      // Update local state
+      if (isInstagram) {
+        setIgTasks(prev => 
+          prev.map(task => 
+            task.id === taskId ? { ...task, 'Done Meli': done } : task
+          )
+        );
+      } else {
+        setRedditTasks(prev => 
+          prev.map(task => 
+            task.id === taskId ? { ...task, 'Done Meli': done } : task
+          )
+        );
+      }
+
+      // Show success message
+      setMessage('Task updated successfully!');
+      setShowMessage(true);
+      setTimeout(() => setShowMessage(false), 3000);
+
     } catch (error) {
-      console.error('Error updating task status:', error);
+      console.error('Error updating task:', error);
+      // Show error message to user
     }
   };
 
-  // Update handleToggle to pass isInstagram
-  const handleToggle = async (task: Task) => {
+  const handleToggle = async (task: IGPost | RedditPost) => {
     console.log('Toggle task:', task);
-    await handleTaskDone(task.id, !task.checked, task.isInstagram);
+    const isInstagram = isIGPost(task);
+    await handleTaskDone(task.id, !task['Done Meli'], isInstagram);
   };
 
   // Calculate progress
