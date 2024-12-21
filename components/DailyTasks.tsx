@@ -213,6 +213,14 @@ interface Task {
   status?: string;
 }
 
+function isRedditPost(task: IGPost | RedditPost): task is RedditPost {
+  return 'Media' in task && 'Title' in task;
+}
+
+function isIGPost(task: IGPost | RedditPost): task is IGPost {
+  return 'Instagram GDrive' in task;
+}
+
 export default function DailyTasks() {
   const [igTasks, setIgTasks] = useState<IGPost[]>([]);
   const [redditTasks, setRedditTasks] = useState<RedditPost[]>([]);
@@ -450,6 +458,25 @@ export default function DailyTasks() {
     };
   }, [igTasks, redditTasks]);
 
+  // Update the type checking logic
+  const getTaskDetails = (task: IGPost | RedditPost, type: 'instagram' | 'reddit') => {
+    const isRedditVideo = type === 'reddit' && isRedditPost(task) && task.Media === 'Gif/Video';
+    const imageUrl = type === 'reddit' && isRedditPost(task) && !isRedditVideo 
+      ? task.Image?.[0]?.url 
+      : null;
+    const videoUrl = type === 'instagram' && isIGPost(task)
+      ? task['Instagram GDrive']
+      : type === 'reddit' && isRedditPost(task) && isRedditVideo
+        ? task['URL Gdrive']
+        : null;
+
+    return {
+      isRedditVideo,
+      imageUrl,
+      videoUrl
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -546,16 +573,21 @@ export default function DailyTasks() {
       {/* Tasks Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         <AnimatePresence>
-          {visibleTasks.map((task, index) => (
-            <div key={task.id} className="w-full max-w-none md:max-w-[315px]">
-              <TaskCard 
-                task={task} 
-                index={index}
-                onDone={handleTaskDone}
-                type={'Instagram GDrive' in task ? 'instagram' : 'reddit'}
-              />
-            </div>
-          ))}
+          {visibleTasks.map((task, index) => {
+            const type = isIGPost(task) ? 'instagram' : 'reddit';
+            const { isRedditVideo, imageUrl, videoUrl } = getTaskDetails(task, type);
+
+            return (
+              <div key={task.id} className="w-full max-w-none md:max-w-[315px]">
+                <TaskCard 
+                  task={task} 
+                  index={index}
+                  onDone={handleTaskDone}
+                  type={type}
+                />
+              </div>
+            );
+          })}
         </AnimatePresence>
       </div>
 
