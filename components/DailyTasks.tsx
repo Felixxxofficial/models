@@ -79,8 +79,14 @@ const getEmbedUrl = (url: string | null) => {
 };
 
 function isRedditPost(task: IGPost | RedditPost): task is RedditPost {
-  return 'Media' in task && 'Title' in task;
+  if (!isRedditPost.logged) {
+    console.log('Sample task fields:', Object.keys(task));
+    isRedditPost.logged = true;
+  }
+  return 'Media' in task;
 }
+
+isRedditPost.logged = false;
 
 function isIGPost(task: IGPost | RedditPost): task is IGPost {
   return 'Instagram GDrive' in task;
@@ -245,10 +251,16 @@ export default function DailyTasks() {
         fetchRedditPosts()
       ]);
       
+      // Debug logs
+      console.log('Reddit Data Details:', {
+        total: redditTasks.length,
+        images: redditTasks.filter(t => t.Media === 'Image').length,
+        sampleTask: redditTasks[0],
+        mediaTypes: [...new Set(redditTasks.map(t => t.Media))]
+      });
+      
       setIgTasks(instagramTasks);
       setRedditTasks(redditTasks);
-      console.log('Instagram Data:', instagramTasks);
-      console.log('Reddit Data:', redditTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     }
@@ -273,32 +285,53 @@ export default function DailyTasks() {
   }, [igTasks, redditTasks]);
 
   const getFilteredTasks = (tasks: (IGPost | RedditPost)[]) => {
-    // First filter by done status
+    console.log('Tasks to filter:', {
+      total: tasks.length,
+      sample: tasks[0],
+      contentTypeFilter
+    });
+
     const statusFilteredTasks = tasks.filter(task => 
       activeTab === 'done' ? task['Done Meli'] : !task['Done Meli']
     );
 
-    // Then filter by content type
+    let filtered: (IGPost | RedditPost)[] = [];
+    
     switch (contentTypeFilter) {
       case 'reels':
-        return statusFilteredTasks.filter(task => isIGPost(task));
+        filtered = statusFilteredTasks.filter(task => !isRedditPost(task));
+        break;
       case 'image':
-        return statusFilteredTasks.filter(task => 
+        filtered = statusFilteredTasks.filter(task => 
           isRedditPost(task) && task.Media === 'Image'
         );
+        break;
       case 'video':
-        return statusFilteredTasks.filter(task => 
-          (isRedditPost(task) && task.Media === 'Gif/Video') || isIGPost(task)
+        filtered = statusFilteredTasks.filter(task => 
+          (isRedditPost(task) && task.Media === 'Gif/Video') ||
+          !isRedditPost(task)
         );
-      case 'story':
-        // Add your story filtering logic here if needed
-        return statusFilteredTasks;
-      default:
-        return statusFilteredTasks;
+        break;
+      default: // 'all'
+        filtered = statusFilteredTasks;
     }
+
+    console.log('Filtered results:', {
+      before: statusFilteredTasks.length,
+      after: filtered.length,
+      filterType: contentTypeFilter
+    });
+
+    return filtered;
   };
 
   const todoTasks = useMemo(() => {
+    console.log('Creating todoTasks with:', {
+      igTasks: igTasks.length,
+      redditTasks: redditTasks.length,
+      sample: redditTasks[0]
+    });
+
     let filtered: (IGPost | RedditPost)[] = [];
     
     if (contentTypeFilter === 'all') {
@@ -306,6 +339,10 @@ export default function DailyTasks() {
     } else if (contentTypeFilter === 'reels') {
       filtered = igTasks;
     } else if (contentTypeFilter === 'image') {
+      console.log('Filtering Reddit images:', {
+        before: redditTasks.length,
+        mediaTypes: redditTasks.map(t => t.Media)
+      });
       filtered = redditTasks.filter(task => task.Media === 'Image');
     } else if (contentTypeFilter === 'video') {
       filtered = [
@@ -313,6 +350,11 @@ export default function DailyTasks() {
         ...igTasks
       ];
     }
+
+    console.log('Filtered results:', {
+      total: filtered.length,
+      filter: contentTypeFilter
+    });
 
     return filtered.filter(task => !task['Done Meli']);
   }, [igTasks, redditTasks, contentTypeFilter]);
