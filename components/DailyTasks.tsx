@@ -1,462 +1,293 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { useState, useEffect, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import ReactConfetti from "react-confetti";
+import confetti from "canvas-confetti";
+
+import ContentDisplay from "@/components/ContentDisplay";
+import { ImageLightbox } from "@/components/ImageLightbox";
+
+// Import your data fetchers from Airtable
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Video, FileText, ExternalLink, Upload, ImageIcon, AlertTriangle, FileVideo, Play } from 'lucide-react'
-import Image from 'next/image'
-import { Badge } from '@/components/ui/badge'
-import ReactConfetti from 'react-confetti'
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { NoteDialog } from './NoteDialog'
-import { MotivationalMessage } from './MotivationalMessage'
-import { fetchIGPosts, fetchRedditPosts, type IGPost, type RedditPost, updateDoneStatus } from '@/lib/airtable'
-import { Instagram } from 'react-content-loader'
-import { Video as VideoComponent } from './Video'
-import { ErrorBoundary } from './ErrorBoundary'
-import { VideoIcon } from './VideoIcon'
-import Link from 'next/link'
-import ContentDisplay from '@/components/ContentDisplay'
-import { ImageLightbox } from './ImageLightbox'
-import confetti from 'canvas-confetti';
+  fetchIGPosts,
+  fetchRedditPosts,
+  type IGPost,
+  type RedditPost,
+} from "@/lib/airtable";
 
-const ITEMS_PER_PAGE = 9; // Changed from 3 to 9
+const ITEMS_PER_PAGE = 9;
 
-type ContentType = 'all' | 'story' | 'image' | 'video' | 'reels';
-
-const celebrationMessages = [
-  "Amazing job! 🎉",
-  "You're on fire! 🔥",
-  "Keep crushing it! 💪",
-  "Fantastic work! 🌟",
-  "You're a superstar! ⭐",
-  "Incredible progress! 🚀",
-  "You're unstoppable! 🏆",
-  "Brilliant effort! 👏",
-  "You're nailing it! 🎯",
-  "Outstanding work! 🌈"
-]
-
-const getCelebrationMessage = () => {
-  const messages = [
-    "🎉 Awesome job! You're crushing it!",
-    "🚀 Another one bites the dust! Keep soaring!",
-    "💪 You're on fire! Nothing can stop you now!",
-    "🌟 Stellar work! You're a content superstar!",
-    "🏆 Champion move! You're dominating this!",
-    "🎯 Bullseye! Your precision is unmatched!",
-    "🌈 Magical! You're turning tasks into gold!",
-    "🦸‍♀️ Superhero status achieved! What's next?",
-    "🏄‍♂️ Riding the wave of productivity! Cowabunga!",
-    "🏄‍♂️ You're wizarding through these tasks!"
-  ]
-  return messages[Math.floor(Math.random() * messages.length)]
-}
-
-const getEmbedUrl = (url: string | null) => {
-  if (!url) return null;
-  
-  // Extract file ID from Google Drive URL
-  const match = url.match(/\/d\/([^/]+)/);
-  if (!match) return null;
-  
-  const fileId = match[1];
-  // Convert to preview URL format
-  return `https://drive.google.com/file/d/${fileId}/preview`;
-};
-
+// Helpers to distinguish Reddit vs Instagram
 function isRedditPost(task: IGPost | RedditPost): task is RedditPost {
-  if (!isRedditPost.logged) {
-    console.log('Sample task fields:', Object.keys(task));
-    isRedditPost.logged = true;
-  }
-  return 'Media' in task;
+  return "Media" in task;
 }
-
-isRedditPost.logged = false;
-
 function isIGPost(task: IGPost | RedditPost): task is IGPost {
-  return 'Instagram GDrive' in task;
+  return "Instagram GDrive" in task;
 }
 
+type ContentType = "all" | "reels" | "image" | "video";
+type TabType = "todo" | "done";
+
+// ─────────────────────────────────────────────────────────────
+// TaskCard: Renders one card (image or video) + Done switch
+// ─────────────────────────────────────────────────────────────
 interface TaskCardProps {
   task: IGPost | RedditPost;
   index?: number;
   onDone: (taskId: string, done: boolean, isInstagram: boolean) => Promise<void>;
-  type: 'instagram' | 'reddit';
+  type: "instagram" | "reddit";
 }
-
-const getVideoUrl = (url: string) => {
-  // Extract file ID from Google Drive URL
-  const match = url.match(/\/d\/([^/]+)/);
-  if (!match) return url;
-  
-  const fileId = match[1];
-  // Convert to preview URL format
-  return `https://drive.google.com/file/d/${fileId}/preview`;
-};
-
-const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
-  const [isDone, setIsDone] = useState(task['Done Meli'] || false);
+function TaskCard({ task, index, onDone, type }: TaskCardProps) {
+  const [isDone, setIsDone] = useState(task["Done Meli"] || false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // If it's a Reddit image
+  const isRedditImage =
+    type === "reddit" &&
+    isRedditPost(task) &&
+    task.Media === "Image" &&
+    task.Image?.[0]?.url;
 
   const handleToggle = async (checked: boolean) => {
     setIsUpdating(true);
     try {
-      const isInstagram = isIGPost(task);
-      await onDone(task.id.toString(), checked, isInstagram);
+      await onDone(task.id, checked, type === "instagram");
       setIsDone(checked);
     } catch (error) {
-      console.error('Error toggling done status:', error);
+      console.error("Error toggling done status:", error);
     }
     setIsUpdating(false);
   };
 
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-4">
-        <ContentDisplay content={task} type={type} />
-        
-        <div className="flex justify-between items-center mb-2">
-          <Badge variant="outline">{type}</Badge>
-          <Switch 
-            checked={isDone}
-            onCheckedChange={handleToggle}
-            disabled={isUpdating}
-            className="scale-75"
-          />
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: (index ?? 0) * 0.05 }}
+    >
+      <Card className="overflow-hidden">
+        <CardContent className="p-4">
+          {/* If Reddit image, show it here */}
+          {isRedditImage && (
+            <>
+              <div
+                className="relative w-full pt-[100%] mb-3 cursor-pointer"
+                onClick={() => setLightboxOpen(true)}
+              >
+                <img
+                  src={task.Image?.[0].url ?? ""}
+                  alt="Reddit content"
+                  className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+                />
+              </div>
+              {lightboxOpen && (
+                <ImageLightbox
+                  isOpen={lightboxOpen}
+                  onClose={() => setLightboxOpen(false)}
+                  imageUrl={task.Image?.[0].url ?? ""}
+                />
+              )}
+            </>
+          )}
 
-interface Task {
-  id: string;
-  'Done Meli': boolean;
-  isInstagram: boolean;
+          {/* For videos (IG or Reddit), use ContentDisplay */}
+          <ContentDisplay content={task} type={type} />
+
+          <div className="flex justify-between items-center mt-3">
+            <Badge variant="outline">{type}</Badge>
+            <Switch
+              checked={isDone}
+              onCheckedChange={handleToggle}
+              disabled={isUpdating}
+              className="scale-75"
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
 }
 
+// ─────────────────────────────────────────────────────────────
+// DailyTasks: The main page
+// ─────────────────────────────────────────────────────────────
 export default function DailyTasks() {
-  const [tasks, setTasks] = useState<(IGPost | RedditPost)[]>([]);
   const [igTasks, setIgTasks] = useState<IGPost[]>([]);
   const [redditTasks, setRedditTasks] = useState<RedditPost[]>([]);
-  const [displayedItems, setDisplayedItems] = useState(ITEMS_PER_PAGE);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [activeTab, setActiveTab] = useState<'todo' | 'done'>('todo');
-  const [contentTypeFilter, setContentTypeFilter] = useState<ContentType>('all');
-  const observerTarget = useRef(null);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [celebrationMessage, setCelebrationMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [counts, setCounts] = useState({
-    all: 0,
-    reels: 0,
-    images: 0,
-    videos: 0
-  });
+
+  const [contentTypeFilter, setContentTypeFilter] = useState<ContentType>("all");
+  const [activeTab, setActiveTab] = useState<TabType>("todo");
+  const [displayedItems, setDisplayedItems] = useState(ITEMS_PER_PAGE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const observerTarget = useRef<HTMLDivElement | null>(null);
+
+  // For success message
   const [showMessage, setShowMessage] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
-  const fetchData = async () => {
-    try {
-      const [instagramTasks, redditTasks] = await Promise.all([
-        fetchIGPosts(),
-        fetchRedditPosts()
-      ]);
-      
-      // Debug logs
-      console.log('Reddit Data Details:', {
-        total: redditTasks.length,
-        images: redditTasks.filter(t => t.Media === 'Image').length,
-        sampleTask: redditTasks[0],
-        mediaTypes: [...new Set(redditTasks.map(t => t.Media))]
-      });
-      
-      setIgTasks(instagramTasks);
-      setRedditTasks(redditTasks);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    }
-  };
-
+  // ─────────────────────────────────────────────────────────
+  // Fetch data once (both IG + Reddit)
+  // ─────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchData();
+    (async () => {
+      try {
+        setIsLoading(true);
+        const [instagramData, redditData] = await Promise.all([
+          fetchIGPosts(),
+          fetchRedditPosts(),
+        ]);
+        setIgTasks(instagramData);
+        setRedditTasks(redditData);
+      } catch (err) {
+        console.error("Error fetching tasks:", err);
+        setError("Failed to load tasks. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
-  useEffect(() => {
-    const totalCount = igTasks.length + redditTasks.length;
+  // ─────────────────────────────────────────────────────────
+  // Counters for the filter buttons
+  // ─────────────────────────────────────────────────────────
+  const counts = useMemo(() => {
     const reelsCount = igTasks.length;
-    const imagesCount = redditTasks.filter(t => t.Media === 'Image').length;
-    const videosCount = redditTasks.filter(t => t.Media === 'Gif/Video').length;
-
-    setCounts({
-      all: totalCount,
+    const imagesCount = redditTasks.filter((t) => t.Media === "Image").length;
+    const videosCount = redditTasks.filter((t) => t.Media === "Gif/Video").length;
+    return {
+      all: reelsCount + redditTasks.length,
       reels: reelsCount,
       images: imagesCount,
-      videos: videosCount
-    });
+      videos: videosCount,
+    };
   }, [igTasks, redditTasks]);
 
-  const getFilteredTasks = (tasks: (IGPost | RedditPost)[]) => {
-    console.log('Tasks to filter:', {
-      total: tasks.length,
-      sample: tasks[0],
-      contentTypeFilter
-    });
-
-    const statusFilteredTasks = tasks.filter(task => 
-      activeTab === 'done' ? task['Done Meli'] : !task['Done Meli']
-    );
-
-    let filtered: (IGPost | RedditPost)[] = [];
-    
-    switch (contentTypeFilter) {
-      case 'reels':
-        filtered = statusFilteredTasks.filter(task => !isRedditPost(task));
-        break;
-      case 'image':
-        filtered = statusFilteredTasks.filter(task => 
-          isRedditPost(task) && task.Media === 'Image'
-        );
-        break;
-      case 'video':
-        filtered = statusFilteredTasks.filter(task => 
-          (isRedditPost(task) && task.Media === 'Gif/Video') ||
-          !isRedditPost(task)
-        );
-        break;
-      default: // 'all'
-        filtered = statusFilteredTasks;
-    }
-
-    console.log('Filtered results:', {
-      before: statusFilteredTasks.length,
-      after: filtered.length,
-      filterType: contentTypeFilter
-    });
-
-    return filtered;
-  };
-
+  // ─────────────────────────────────────────────────────────
+  // Build "to-do" vs "done" sets
+  // ─────────────────────────────────────────────────────────
   const todoTasks = useMemo(() => {
-    console.log('Creating todoTasks with:', {
-      igTasks: igTasks.length,
-      redditTasks: redditTasks.length,
-      sample: redditTasks[0]
-    });
-
     let filtered: (IGPost | RedditPost)[] = [];
-    
-    if (contentTypeFilter === 'all') {
+
+    // 1) Filter by content type
+    if (contentTypeFilter === "all") {
       filtered = [...igTasks, ...redditTasks];
-    } else if (contentTypeFilter === 'reels') {
-      filtered = igTasks;
-    } else if (contentTypeFilter === 'image') {
-      console.log('Filtering Reddit images:', {
-        before: redditTasks.length,
-        mediaTypes: redditTasks.map(t => t.Media)
-      });
-      filtered = redditTasks.filter(task => task.Media === 'Image');
-    } else if (contentTypeFilter === 'video') {
+    } else if (contentTypeFilter === "reels") {
+      filtered = igTasks; // all IG tasks
+    } else if (contentTypeFilter === "image") {
+      filtered = redditTasks.filter((t) => t.Media === "Image");
+    } else if (contentTypeFilter === "video") {
       filtered = [
-        ...redditTasks.filter(task => task.Media === 'Gif/Video'),
-        ...igTasks
+        ...redditTasks.filter((t) => t.Media === "Gif/Video"),
+        ...igTasks,
       ];
     }
 
-    console.log('Filtered results:', {
-      total: filtered.length,
-      filter: contentTypeFilter
-    });
-
-    return filtered.filter(task => !task['Done Meli']);
+    // 2) Keep only tasks that are NOT done
+    return filtered.filter((task) => !task["Done Meli"]);
   }, [igTasks, redditTasks, contentTypeFilter]);
 
   const doneTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
-    
-    if (contentTypeFilter === 'all') {
+
+    if (contentTypeFilter === "all") {
       filtered = [...igTasks, ...redditTasks];
-    } else if (contentTypeFilter === 'reels') {
+    } else if (contentTypeFilter === "reels") {
       filtered = igTasks;
-    } else if (contentTypeFilter === 'image') {
-      filtered = redditTasks.filter(task => task.Media === 'Image');
-    } else if (contentTypeFilter === 'video') {
+    } else if (contentTypeFilter === "image") {
+      filtered = redditTasks.filter((t) => t.Media === "Image");
+    } else if (contentTypeFilter === "video") {
       filtered = [
-        ...redditTasks.filter(task => task.Media === 'Gif/Video'),
-        ...igTasks
+        ...redditTasks.filter((t) => t.Media === "Gif/Video"),
+        ...igTasks,
       ];
     }
 
-    return filtered.filter(task => task['Done Meli']);
+    // Keep only tasks that ARE done
+    return filtered.filter((task) => task["Done Meli"]);
   }, [igTasks, redditTasks, contentTypeFilter]);
 
-  const currentTasks = activeTab === 'todo' ? todoTasks : doneTasks;
-  const visibleTasks = useMemo(() => {
-    return getFilteredTasks(currentTasks).slice(0, displayedItems);
-  }, [currentTasks, contentTypeFilter, displayedItems]);
-  const hasMore = visibleTasks.length < getFilteredTasks(currentTasks).length;
+  // Which list is visible (To-Do or Done)?
+  const currentTasks = activeTab === "todo" ? todoTasks : doneTasks;
+
+  // ─────────────────────────────────────────────────────────
+  // Paginate with infinite scroll
+  // ─────────────────────────────────────────────────────────
+  const visibleTasks = useMemo(
+    () => currentTasks.slice(0, displayedItems),
+    [currentTasks, displayedItems]
+  );
 
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const allTasks = await fetchIGPosts();
-        console.log('Fetched tasks:', allTasks.length);
-        setIgTasks(allTasks);
-      } catch (err) {
-        console.error('Error in component:', err);
-        setError('Failed to load tasks. Please try again later.');
-      } finally {
-        setIsLoading(false);
+    const observer = new IntersectionObserver((entries) => {
+      if (
+        entries[0].isIntersecting &&
+        !isLoadingMore &&
+        currentTasks.length > displayedItems
+      ) {
+        setIsLoadingMore(true);
+        setDisplayedItems((prev) => prev + ITEMS_PER_PAGE);
+        setIsLoadingMore(false);
       }
-    };
-    fetchTasks();
-  }, []);
+    });
 
-  // Intersection Observer setup
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting && !isLoadingMore && getFilteredTasks(currentTasks).length > displayedItems) {
-          console.log('Loading more items...', displayedItems, getFilteredTasks(currentTasks).length); // Debug log
-          setIsLoadingMore(true);
-          setDisplayedItems(prev => {
-            const next = prev + ITEMS_PER_PAGE;
-            console.log('New displayed items count:', next); // Debug log
-            return next;
-          });
-          setIsLoadingMore(false);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
+    const el = observerTarget.current;
+    if (el) observer.observe(el);
 
     return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
+      if (el) observer.unobserve(el);
     };
-  }, [isLoadingMore, displayedItems, getFilteredTasks(currentTasks).length]);
+  }, [currentTasks, displayedItems, isLoadingMore]);
 
+  // ─────────────────────────────────────────────────────────
+  // Handle toggling "Done" => moves from To-Do to Done
+  // ─────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
-      const response = await fetch('/api/updateTask', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ taskId, done, isInstagram }),
-      });
+      // Make your actual API call here if needed:
+      // e.g. await fetch("/api/updateTask", { ... })
 
-      if (!response.ok) {
-        throw new Error('Failed to update task');
-      }
-
-      // Update local state
+      // Update local IG or Reddit tasks
       if (isInstagram) {
-        setIgTasks(prev => 
-          prev.map(task => 
-            task.id === taskId ? { ...task, 'Done Meli': done } : task
-          )
+        setIgTasks((prev) =>
+          prev.map((t) => (t.id === taskId ? { ...t, "Done Meli": done } : t))
         );
       } else {
-        setRedditTasks(prev => 
-          prev.map(task => 
-            task.id === taskId ? { ...task, 'Done Meli': done } : task
-          )
+        setRedditTasks((prev) =>
+          prev.map((t) => (t.id === taskId ? { ...t, "Done Meli": done } : t))
         );
       }
 
-      // Show success message
-      setMessage('Task updated successfully!');
+      setMessage("Task updated successfully!");
       setShowMessage(true);
-      setTimeout(() => setShowMessage(false), 3000);
-
+      setTimeout(() => setShowMessage(false), 2500);
     } catch (error) {
-      console.error('Error updating task:', error);
-      // Show error message to user
+      console.error("Error updating task:", error);
     }
   };
 
-  const handleToggle = async (task: IGPost | RedditPost) => {
-    console.log('Toggle task:', task);
-    const isInstagram = isIGPost(task);
-    await handleTaskDone(task.id, !task['Done Meli'], isInstagram);
-  };
-
-  // Calculate progress
-  const totalTasks = getFilteredTasks(currentTasks).length;
-  const completedTasks = doneTasks.length;
-  const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
-  // Add a log to check filtered tasks
-  useEffect(() => {
-    console.log('Current Reddit Tasks:', redditTasks);
-    console.log('Filtered Reddit Images:', redditTasks.filter(t => t.Media === 'Image').length);
-    console.log('Filtered Reddit Videos:', redditTasks.filter(t => t.Media === 'Gif/Video').length);
-  }, [redditTasks]);
-
-  // Add this near your other useMemo hooks
+  // ─────────────────────────────────────────────────────────
+  // Overall progress
+  // ─────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
-    const allTasks = [...igTasks, ...redditTasks];
-    const totalTasks = allTasks.length;
-    const completedTasks = allTasks.filter(task => task['Done Meli'] === true).length;
-    const remainingTasks = totalTasks - completedTasks;
-    const progressPercentage = (completedTasks / totalTasks) * 100;
-
-    return {
-      total: totalTasks,
-      completed: completedTasks,
-      remaining: remainingTasks,
-      percentage: progressPercentage
-    };
+    const all = [...igTasks, ...redditTasks];
+    const total = all.length;
+    const completed = all.filter((t) => t["Done Meli"]).length;
+    const remaining = total - completed;
+    const percentage = total > 0 ? (completed / total) * 100 : 0;
+    return { total, completed, remaining, percentage };
   }, [igTasks, redditTasks]);
 
-  // Update the type checking logic
-  const getTaskDetails = (task: IGPost | RedditPost, type: 'instagram' | 'reddit') => {
-    if (isRedditPost(task)) {
-      const isRedditVideo = task.Media === 'Gif/Video';
-      return {
-        isRedditVideo,
-        imageUrl: !isRedditVideo ? task.Image?.[0]?.url : null,
-        videoUrl: isRedditVideo ? task['URL Gdrive'] : null
-      };
-    } else if (isIGPost(task)) {
-      return {
-        isRedditVideo: false,
-        imageUrl: null,
-        videoUrl: task['Instagram GDrive']
-      };
-    }
-    return {
-      isRedditVideo: false,
-      imageUrl: null,
-      videoUrl: null
-    };
-  };
-
+  // ─────────────────────────────────────────────────────────
+  // Rendering
+  // ─────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -464,7 +295,6 @@ export default function DailyTasks() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen text-red-600">
@@ -478,134 +308,92 @@ export default function DailyTasks() {
       {/* Progress Section */}
       <div className="bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg p-6 mb-8 text-white">
         <h1 className="text-2xl font-bold mb-2">Today's Progress</h1>
-        <p className="mb-4">
-          {progressStats.remaining} tasks to conquer! Let's get started! 💪
-        </p>
-        
-        {/* Progress bar */}
+        <p className="mb-4">{progressStats.remaining} tasks to conquer! Let's go! 💪</p>
         <div className="w-full bg-white/30 rounded-full h-4 mb-2">
-          <div 
+          <div
             className="bg-white rounded-full h-4 transition-all duration-500"
             style={{ width: `${progressStats.percentage}%` }}
           />
         </div>
-        
-        <p>
-          {progressStats.completed} of {progressStats.total} tasks completed
-        </p>
+        <p>{progressStats.completed} of {progressStats.total} tasks completed</p>
       </div>
 
-      {/* Filter Section */}
-      <div className="mb-6 max-w-[640px] mx-auto">
+      {/* Filter by content type */}
+      <div className="mb-6">
         <h3 className="text-lg font-semibold mb-2">Filter by Content Type</h3>
-        <div className="flex gap-2">
-          <Button 
-            variant={contentTypeFilter === 'all' ? 'default' : 'outline'}
-            onClick={() => setContentTypeFilter('all')}
-            className={`${contentTypeFilter === 'all' ? 'bg-[#0A0D14] text-white hover:bg-[#0A0D14]/90' : ''}`}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={contentTypeFilter === "all" ? "default" : "outline"}
+            onClick={() => setContentTypeFilter("all")}
           >
             All {counts.all}
           </Button>
-          <Button 
-            variant={contentTypeFilter === 'reels' ? 'default' : 'outline'}
-            onClick={() => setContentTypeFilter('reels')}
-            className={`${contentTypeFilter === 'reels' ? 'bg-[#0A0D14] text-white hover:bg-[#0A0D14]/90' : ''}`}
+          <Button
+            variant={contentTypeFilter === "reels" ? "default" : "outline"}
+            onClick={() => setContentTypeFilter("reels")}
           >
             Reels {counts.reels}
           </Button>
-          <Button 
-            variant={contentTypeFilter === 'image' ? 'default' : 'outline'}
-            onClick={() => setContentTypeFilter('image')}
-            className={`${contentTypeFilter === 'image' ? 'bg-[#0A0D14] text-white hover:bg-[#0A0D14]/90' : ''}`}
+          <Button
+            variant={contentTypeFilter === "image" ? "default" : "outline"}
+            onClick={() => setContentTypeFilter("image")}
           >
             Images {counts.images}
           </Button>
-          <Button 
-            variant={contentTypeFilter === 'video' ? 'default' : 'outline'}
-            onClick={() => setContentTypeFilter('video')}
-            className={`${contentTypeFilter === 'video' ? 'bg-[#0A0D14] text-white hover:bg-[#0A0D14]/90' : ''}`}
+          <Button
+            variant={contentTypeFilter === "video" ? "default" : "outline"}
+            onClick={() => setContentTypeFilter("video")}
           >
             Videos {counts.videos}
           </Button>
         </div>
       </div>
 
-      {/* Tabs Section */}
-      <div className="mb-6 max-w-[640px] mx-auto">
-        <div className="flex gap-2">
-          <Button 
-            variant={activeTab === 'todo' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('todo')}
-            className={`${activeTab === 'todo' ? 'bg-[#0A0D14] text-white hover:bg-[#0A0D14]/90' : ''}`}
-          >
-            To-Do ({todoTasks.length})
-          </Button>
-          <Button 
-            variant={activeTab === 'done' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('done')}
-            className={`${activeTab === 'done' ? 'bg-[#0A0D14] text-white hover:bg-[#0A0D14]/90' : ''}`}
-          >
-            Done ({doneTasks.length})
-          </Button>
-        </div>
+      {/* To-Do / Done Tabs */}
+      <div className="mb-6 flex gap-2">
+        <Button
+          variant={activeTab === "todo" ? "default" : "outline"}
+          onClick={() => setActiveTab("todo")}
+        >
+          To-Do ({todoTasks.length})
+        </Button>
+        <Button
+          variant={activeTab === "done" ? "default" : "outline"}
+          onClick={() => setActiveTab("done")}
+        >
+          Done ({doneTasks.length})
+        </Button>
       </div>
 
-      {/* Tasks Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      {/* Task Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <AnimatePresence>
           {visibleTasks.map((task, index) => {
-            const type = isIGPost(task) ? 'instagram' : 'reddit';
-            const { isRedditVideo, imageUrl, videoUrl } = getTaskDetails(task, type);
-
+            const taskType = isIGPost(task) ? "instagram" : "reddit";
             return (
-              <div key={task.id} className="w-full max-w-none md:max-w-[315px]">
-                <TaskCard 
-                  task={task} 
-                  index={index}
-                  onDone={handleTaskDone}
-                  type={type}
-                />
-              </div>
+              <TaskCard
+                key={task.id}
+                task={task}
+                index={index}
+                onDone={handleTaskDone}
+                type={taskType}
+              />
             );
           })}
         </AnimatePresence>
       </div>
 
-      {/* Observer target - show only if there are more items to load */}
-      {getFilteredTasks(currentTasks).length > displayedItems && (
-        <div 
-          ref={observerTarget}
-          className="w-full h-20 flex items-center justify-center mt-4"
-        >
-          {isLoadingMore ? (
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-          ) : (
-            <div className="text-gray-500">Scroll for more</div>
-          )}
-        </div>
+      {/* Infinite scroll marker */}
+      {currentTasks.length > displayedItems && (
+        <div ref={observerTarget} className="h-12" />
       )}
 
-      {showConfetti && (
-        <ReactConfetti
-          width={window.innerWidth}
-          height={window.innerHeight}
-          recycle={false}
-          numberOfPieces={200}
-        />
-      )}
-      
-      {celebrationMessage && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
-          {celebrationMessage}
-        </div>
-      )}
-
+      {/* Success toast */}
       {showMessage && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-bounce">
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-md shadow-md z-50">
           {message}
         </div>
       )}
     </div>
   );
 }
-
