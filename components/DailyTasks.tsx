@@ -46,6 +46,7 @@ interface TaskCardProps {
 function TaskCard({ task, index, onDone, type }: TaskCardProps) {
   const [isDone, setIsDone] = useState(task["Done Meli"] || false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleToggle = async (checked: boolean) => {
     setIsUpdating(true);
@@ -58,6 +59,17 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
     setIsUpdating(false);
   };
 
+  const handleUpload = () => {
+    const uploadUrl = task["Upload Content Meli"];
+    
+    if (uploadUrl) {
+      window.open(uploadUrl, '_blank');
+    } else {
+      console.error('No upload URL available for this content');
+      // Optionally show an error message to the user
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -68,14 +80,50 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
         <CardContent className="p-4">
           <ContentDisplay content={task} type={type} />
 
-          <div className="flex justify-between items-center mt-3">
-            <Badge variant="outline">{type}</Badge>
-            <Switch
-              checked={isDone}
-              onCheckedChange={handleToggle}
-              disabled={isUpdating}
-              className="scale-75"
-            />
+          <div className="flex flex-col gap-2 mt-3">
+            {/* Upload and Toggle row */}
+            <div className="flex justify-between items-center">
+              <Button 
+                size="sm"
+                className="bg-gradient-to-r from-purple-400 to-pink-500 text-white hover:from-purple-500 hover:to-pink-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                onClick={handleUpload}
+                disabled={isUploading || isDone}
+              >
+                {isUploading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Uploading...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <svg 
+                      className="w-4 h-4" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                      />
+                    </svg>
+                    Upload Content
+                  </span>
+                )}
+              </Button>
+              <Switch
+                checked={isDone}
+                onCheckedChange={handleToggle}
+                disabled={isUpdating}
+                className="scale-75"
+              />
+            </div>
+            {/* Badge row */}
+            <Badge variant="outline" className="self-start">
+              {type}
+            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -187,7 +235,7 @@ export default function DailyTasks() {
   // Which list is visible (To-Do or Done)?
   const currentTasks = activeTab === "todo" ? todoTasks : doneTasks;
 
-  // ────────────────────────────────────────────────────────────
+  // ───────────────────���────────────────────────────────────────
   // Paginate with infinite scroll
   // ────────────────────────────────────────────────────────────
   const visibleTasks = useMemo(
@@ -218,7 +266,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Handle toggling "Done" => moves from To-Do to Done
-  // ────────────────────────────────────────────────────────────
+  // ─────────────────────────────���──────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
       const response = await fetch('/api/airtable', {
@@ -252,7 +300,7 @@ export default function DailyTasks() {
     }
   };
 
-  // ────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────���─────
   // Overall progress
   // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
