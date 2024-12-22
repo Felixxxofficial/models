@@ -49,27 +49,27 @@ let airtableBase: any = null;
 
 // Add separate config for Instagram
 const instagramConfig = {
-  apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY!,
-  baseId: process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!,
-  tableId: process.env.NEXT_PUBLIC_AIRTABLE_IG!,
-  viewId: process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI!,
+  apiKey: process.env.AIRTABLE_API_KEY!,
+  baseId: process.env.AIRTABLE_BASE_ID!,
+  tableId: process.env.AIRTABLE_IG!,
+  viewId: process.env.AIRTABLE_VIEW_MELI!,
   endpointUrl: 'https://api.airtable.com'
 };
 
 // Add separate config for Reddit
 const redditConfig = {
-  apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY!,
-  baseId: process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_BASE_ID!,
-  tableId: process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_TABLE_ID!,
-  viewId: process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_VIEW_ID!,
+  apiKey: process.env.AIRTABLE_API_KEY!,
+  baseId: process.env.AIRTABLE_REDDIT_BASE_ID!,
+  tableId: process.env.AIRTABLE_REDDIT_TABLE_ID!,
+  viewId: process.env.AIRTABLE_REDDIT_VIEW_ID!,
   endpointUrl: 'https://api.airtable.com'
 };
 
 function getAirtableBase() {
   if (airtableBase) return airtableBase;
 
-  const apiKey = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY;
-  const baseId = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
+  const apiKey = process.env.AIRTABLE_API_KEY;
+  const baseId = process.env.AIRTABLE_BASE_ID;
 
   if (!apiKey) {
     console.error('Airtable API key is missing');
@@ -113,11 +113,11 @@ export async function fetchIGPosts(): Promise<IGPost[]> {
     }
 
     const headers = {
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_AIRTABLE_API_KEY}`,
+      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
     };
 
-    const viewName = process.env.NEXT_PUBLIC_AIRTABLE_VIEW_MELI || DEFAULT_VIEW;
-    const tableId = process.env.NEXT_PUBLIC_AIRTABLE_IG;
+    const viewName = process.env.AIRTABLE_VIEW_MELI || DEFAULT_VIEW;
+    const tableId = process.env.AIRTABLE_IG;
 
     if (!tableId) {
       throw new Error('Airtable table ID is not defined');
@@ -217,12 +217,17 @@ export async function updateDoneStatus(
 
 export async function fetchRedditPosts(): Promise<RedditPost[]> {
   try {
-    const url = `https://api.airtable.com/v0/${process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_BASE_ID}/${process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_TABLE_ID}?view=${process.env.NEXT_PUBLIC_AIRTABLE_REDDIT_VIEW_ID}`;
+    const baseId = process.env.AIRTABLE_REDDIT_BASE_ID;
+    const tableId = process.env.AIRTABLE_REDDIT_TABLE_ID;
+    const viewId = process.env.AIRTABLE_REDDIT_VIEW_ID;
+    const apiKey = process.env.AIRTABLE_API_KEY;
+
+    const url = `https://api.airtable.com/v0/${baseId}/${tableId}?view=${viewId}`;
     console.log('Fetching Reddit posts from:', url);
 
     const response = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_AIRTABLE_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       next: { revalidate: 60 },
     });

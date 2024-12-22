@@ -109,12 +109,13 @@ export default function DailyTasks() {
     (async () => {
       try {
         setIsLoading(true);
-        const [instagramData, redditData] = await Promise.all([
-          fetchIGPosts(),
-          fetchRedditPosts(),
-        ]);
-        setIgTasks(instagramData);
-        setRedditTasks(redditData);
+        const response = await fetch('/api/airtable');
+        const data = await response.json();
+        
+        if (!response.ok) throw new Error(data.error);
+        
+        setIgTasks(data.instagram);
+        setRedditTasks(data.reddit);
       } catch (err) {
         console.error("Error fetching tasks:", err);
         setError("Failed to load tasks. Please try again later.");
@@ -124,9 +125,9 @@ export default function DailyTasks() {
     })();
   }, []);
 
-  // ──────────────────────────────────────────────────────��──
+  // ────────────────────────────────────────────────────────────
   // Counters for the filter buttons
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
     const reelsCount = igTasks.length;
     const imagesCount = redditTasks.filter((t) => t.Media === "Image").length;
@@ -139,9 +140,9 @@ export default function DailyTasks() {
     };
   }, [igTasks, redditTasks]);
 
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Build "to-do" vs "done" sets
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const todoTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
 
@@ -186,9 +187,9 @@ export default function DailyTasks() {
   // Which list is visible (To-Do or Done)?
   const currentTasks = activeTab === "todo" ? todoTasks : doneTasks;
 
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Paginate with infinite scroll
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const visibleTasks = useMemo(
     () => currentTasks.slice(0, displayedItems),
     [currentTasks, displayedItems]
@@ -215,13 +216,18 @@ export default function DailyTasks() {
     };
   }, [currentTasks, displayedItems, isLoadingMore]);
 
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Handle toggling "Done" => moves from To-Do to Done
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
-      // Call the Airtable update function
-      await updateDoneStatus(taskId, done, isInstagram);
+      const response = await fetch('/api/airtable', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ taskId, done, isInstagram }),
+      });
 
       // Update local state after successful Airtable update
       if (isInstagram) {
@@ -246,9 +252,9 @@ export default function DailyTasks() {
     }
   };
 
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Overall progress
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
     const all = [...igTasks, ...redditTasks];
     const total = all.length;
@@ -258,9 +264,9 @@ export default function DailyTasks() {
     return { total, completed, remaining, percentage };
   }, [igTasks, redditTasks]);
 
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Rendering
-  // ─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
