@@ -46,14 +46,6 @@ interface TaskCardProps {
 function TaskCard({ task, index, onDone, type }: TaskCardProps) {
   const [isDone, setIsDone] = useState(task["Done Meli"] || false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-
-  // If it's a Reddit image
-  const isRedditImage =
-    type === "reddit" &&
-    isRedditPost(task) &&
-    task.Media === "Image" &&
-    task.Image?.[0]?.url;
 
   const handleToggle = async (checked: boolean) => {
     setIsUpdating(true);
@@ -74,30 +66,6 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
     >
       <Card className="overflow-hidden">
         <CardContent className="p-4">
-          {/* If Reddit image, show it here */}
-          {isRedditImage && (
-            <>
-              <div
-                className="relative w-full pt-[100%] mb-3 cursor-pointer"
-                onClick={() => setLightboxOpen(true)}
-              >
-                <img
-                  src={task.Image?.[0].url ?? ""}
-                  alt="Reddit content"
-                  className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
-                />
-              </div>
-              {lightboxOpen && (
-                <ImageLightbox
-                  isOpen={lightboxOpen}
-                  onClose={() => setLightboxOpen(false)}
-                  imageUrl={task.Image?.[0].url ?? ""}
-                />
-              )}
-            </>
-          )}
-
-          {/* For videos (IG or Reddit), use ContentDisplay */}
           <ContentDisplay content={task} type={type} />
 
           <div className="flex justify-between items-center mt-3">
@@ -156,7 +124,7 @@ export default function DailyTasks() {
     })();
   }, []);
 
-  // ─────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────��──
   // Counters for the filter buttons
   // ─────────────────────────────────────────────────────────
   const counts = useMemo(() => {
