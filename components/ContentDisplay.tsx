@@ -4,61 +4,25 @@ import { Dialog, DialogContent } from './ui/dialog';
 import { Video, FileVideo, Play } from 'lucide-react';
 import VideoPlayer from './VideoPlayer';
 import { ImageLightbox } from './ImageLightbox';
-
-// Define types inline
-interface IGPost {
-  id: string;
-  caption?: string;
-  'Instagram GDrive'?: string;
-  Thumbnail?: Array<{ url: string }>;
-  'Done Meli': boolean;
-}
-
-interface RedditPost {
-  id: string;
-  Title: string;
-  Link: string;
-  Media: 'Image' | 'Gif/Video';
-  Image?: Array<{ url: string }>;
-  'URL Gdrive'?: string;
-  'Done Meli': boolean;
-}
+import { IGPost, RedditPost } from '@/lib/airtable';
 
 interface ContentDisplayProps {
   content: IGPost | RedditPost;
   type: 'instagram' | 'reddit';
 }
 
-// Type guards need to be fixed
-function isRedditPost(content: any): content is RedditPost {
-  return (
-    content &&
-    typeof content === 'object' &&
-    (
-      // For video content
-      (content.Media === 'Gif/Video' && 'URL Gdrive' in content) ||
-      // For image content
-      (content.Media === 'Image' && Array.isArray(content.Image) && content.Image.length > 0)
-    )
-  );
+// Use type guards from airtable.ts or redefine them here
+function isRedditPost(content: IGPost | RedditPost): content is RedditPost {
+  return 'Media' in content;
 }
 
-function isIGPost(content: any): content is IGPost {
-  return (
-    content &&
-    typeof content === 'object' &&
-    (
-      'Instagram GDrive' in content ||
-      (Array.isArray(content.Thumbnail) && content.Thumbnail.length > 0)
-    )
-  );
+function isIGPost(content: IGPost | RedditPost): content is IGPost {
+  return 'Instagram GDrive' in content;
 }
 
 function getGoogleDriveDirectUrl(url: string) {
-  // Extract file ID from Google Drive URL
   const fileId = url.match(/[-\w]{25,}/);
   if (!fileId) return null;
-  // Use the preview URL instead of download URL
   return `https://drive.google.com/file/d/${fileId[0]}/preview`;
 }
 
@@ -133,7 +97,6 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
       );
     }
 
-    // Show thumbnail image if available
     if (content.Thumbnail?.[0]) {
       return (
         <>
@@ -157,15 +120,6 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
       );
     }
   }
-
-  // Log why nothing was rendered
-  console.log('No content rendered because:', {
-    type,
-    isRedditPost: isRedditPost(content),
-    isRedditVideo: isRedditPost(content) && content.Media === 'Gif/Video',
-    hasGDriveUrl: isRedditPost(content) && !!content['URL Gdrive'],
-    content: JSON.stringify(content, null, 2)
-  });
 
   return null;
 } 
