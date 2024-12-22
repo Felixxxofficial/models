@@ -18,6 +18,7 @@ import {
   fetchRedditPosts,
   type IGPost,
   type RedditPost,
+  updateDoneStatus,
 } from "@/lib/airtable";
 
 const ITEMS_PER_PAGE = 9;
@@ -251,10 +252,10 @@ export default function DailyTasks() {
   // ─────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
-      // Make your actual API call here if needed:
-      // e.g. await fetch("/api/updateTask", { ... })
+      // Call the Airtable update function
+      await updateDoneStatus(taskId, done, isInstagram);
 
-      // Update local IG or Reddit tasks
+      // Update local state after successful Airtable update
       if (isInstagram) {
         setIgTasks((prev) =>
           prev.map((t) => (t.id === taskId ? { ...t, "Done Meli": done } : t))
@@ -270,6 +271,10 @@ export default function DailyTasks() {
       setTimeout(() => setShowMessage(false), 2500);
     } catch (error) {
       console.error("Error updating task:", error);
+      // Show error message to user
+      setMessage("Failed to update task. Please try again.");
+      setShowMessage(true);
+      setTimeout(() => setShowMessage(false), 2500);
     }
   };
 
