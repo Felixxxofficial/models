@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { Dialog, DialogContent } from './ui/dialog';
 import { Video, FileVideo, Play } from 'lucide-react';
 import VideoPlayer from './VideoPlayer';
+import { ImageLightbox } from './ImageLightbox';
 
 // Define types inline
 interface IGPost {
@@ -27,47 +28,112 @@ interface ContentDisplayProps {
   type: 'instagram' | 'reddit';
 }
 
-function isRedditPost(content: IGPost | RedditPost): content is RedditPost {
-  return 'Media' in content && 'Title' in content;
+// Type guards need to be fixed
+function isRedditPost(content: any): content is RedditPost {
+  return (
+    content &&
+    typeof content === 'object' &&
+    (
+      // For video content
+      (content.Media === 'Gif/Video' && 'URL Gdrive' in content) ||
+      // For image content
+      (content.Media === 'Image' && Array.isArray(content.Image) && content.Image.length > 0)
+    )
+  );
 }
 
-function isIGPost(content: IGPost | RedditPost): content is IGPost {
-  return 'Instagram GDrive' in content;
+function isIGPost(content: any): content is IGPost {
+  return (
+    content &&
+    typeof content === 'object' &&
+    Array.isArray(content.Thumbnail) &&
+    content.Thumbnail.length > 0
+  );
 }
 
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
-  const [showDialog, setShowDialog] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   // Handle Reddit content
   if (type === 'reddit' && isRedditPost(content)) {
-    if (content.Media === 'Gif/Video' && typeof content['URL Gdrive'] === 'string') {
+    // Video/GIF content
+    if (content.Media === 'Gif/Video' && content['URL Gdrive']) {
       return (
         <div className="touch-none" style={{ touchAction: 'none' }}>
           <VideoPlayer src={content['URL Gdrive']} />
         </div>
       );
-    } else if (content.Media === 'Image' && content.Image?.[0]?.url) {
+    }
+    
+    // Image content
+    if (content.Media === 'Image' && content.Image?.[0]) {
       return (
-        <div className="relative aspect-square">
-          <Image
-            src={content.Image[0].url}
-            alt={content.Title || ''}
-            fill
-            className="object-cover"
+        <>
+          <div 
+            className="relative w-full pt-[100%] mb-3 cursor-pointer overflow-hidden"
+            onClick={() => setIsLightboxOpen(true)}
+          >
+            <img
+              src={content.Image[0].url}
+              alt={content.Caption || 'Reddit content'}
+              className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+            />
+          </div>
+          
+          <ImageLightbox
+            isOpen={isLightboxOpen}
+            onClose={() => setIsLightboxOpen(false)}
+            imageUrl={content.Image[0].url}
           />
-        </div>
+        </>
       );
     }
   }
 
   // Handle Instagram content
-  if (type === 'instagram' && isIGPost(content) && typeof content['Instagram GDrive'] === 'string') {
-    return (
-      <div className="touch-none" style={{ touchAction: 'none' }}>
-        <VideoPlayer src={content['Instagram GDrive']} />
-      </div>
-    );
+  if (type === 'instagram' && isIGPost(content)) {
+    if (content.Instagram_GDrive) {
+      return (
+        <div className="touch-none" style={{ touchAction: 'none' }}>
+          <VideoPlayer src={content.Instagram_GDrive} />
+        </div>
+      );
+    }
+
+    // Show thumbnail image if available
+    if (content.Thumbnail?.[0]) {
+      return (
+        <>
+          <div 
+            className="relative w-full pt-[100%] mb-3 cursor-pointer overflow-hidden"
+            onClick={() => setIsLightboxOpen(true)}
+          >
+            <img
+              src={content.Thumbnail[0].url}
+              alt={content.caption || 'Instagram content'}
+              className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+            />
+          </div>
+          
+          <ImageLightbox
+            isOpen={isLightboxOpen}
+            onClose={() => setIsLightboxOpen(false)}
+            imageUrl={content.Thumbnail[0].url}
+          />
+        </>
+      );
+    }
   }
+
+  // Log why nothing was rendered
+  console.log('No content rendered because:', {
+    contentType: type,
+    hasRedditImage: isRedditPost(content) && content.Media === 'Image' && content.Image?.[0]?.url,
+    hasRedditVideo: isRedditPost(content) && content.Media === 'Gif/Video' && content['URL Gdrive'],
+    hasIGVideo: isIGPost(content) && content.Instagram_GDrive,
+    hasIGImage: isIGPost(content) && content.Thumbnail?.[0]?.url,
+    content: JSON.stringify(content, null, 2)
+  });
 
   return null;
 } 

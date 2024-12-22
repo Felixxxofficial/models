@@ -112,47 +112,6 @@ const getVideoUrl = (url: string) => {
 const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
   const [isDone, setIsDone] = useState(task['Done Meli'] || false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-
-  interface MediaContent {
-    isVideo: boolean;
-    url?: string;
-    imageUrl?: string;
-  }
-
-  const getMediaContent = (): MediaContent | null => {
-    if (isRedditPost(task)) {
-      if (task.Media === 'Gif/Video') {
-        return {
-          isVideo: true,
-          url: task['URL Gdrive']
-        };
-      } else if (task.Media === 'Image' && task.Image?.[0]?.url) {
-        return {
-          isVideo: false,
-          imageUrl: task.Image[0].url,
-          url: task.Image[0].url
-        };
-      }
-    } else if (isIGPost(task)) {
-      return {
-        isVideo: true,
-        url: task['Instagram GDrive']
-      };
-    }
-    return null;
-  };
-
-  const getUploadUrl = (task: IGPost | RedditPost) => {
-    if ('Upload Content Meli' in task) {
-      return task['Upload Content Meli'];
-    }
-    return null;
-  };
-
-  const mediaContent = getMediaContent();
-  const uploadUrl = getUploadUrl(task);
-  const embedUrl = mediaContent?.url ? getVideoUrl(mediaContent.url) : null;
 
   const handleToggle = async (checked: boolean) => {
     setIsUpdating(true);
@@ -169,38 +128,7 @@ const TaskCard = ({ task, index, onDone, type }: TaskCardProps) => {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
-        {type === 'reddit' && !mediaContent?.isVideo && mediaContent?.imageUrl && (
-          <>
-            <div 
-              className="relative w-full pt-[100%] mb-3 cursor-pointer"
-              onClick={() => setIsLightboxOpen(true)}
-            >
-              <img
-                src={mediaContent.imageUrl}
-                alt="Reddit content"
-                className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
-              />
-            </div>
-            
-            <ImageLightbox
-              isOpen={isLightboxOpen}
-              onClose={() => setIsLightboxOpen(false)}
-              imageUrl={mediaContent.imageUrl}
-            />
-          </>
-        )}
-        
-        {embedUrl && (
-          <div className="relative w-full pt-[177.77%] mb-3">
-            <iframe
-              src={embedUrl}
-              className="absolute top-0 left-0 w-full h-full rounded-lg"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-              frameBorder="0"
-            />
-          </div>
-        )}
+        <ContentDisplay content={task} type={type} />
         
         <div className="flex justify-between items-center mb-2">
           <Badge variant="outline">{type}</Badge>
