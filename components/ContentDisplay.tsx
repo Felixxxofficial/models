@@ -97,7 +97,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
           >
             <img
               src={content.Image[0].url}
-              alt={content.Caption || 'Reddit content'}
+              alt={content.Title || 'Reddit content'}
               className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
             />
           </div>
