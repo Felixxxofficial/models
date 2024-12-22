@@ -51,6 +51,14 @@ function isIGPost(content: any): content is IGPost {
   );
 }
 
+function getGoogleDriveDirectUrl(url: string) {
+  // Extract file ID from Google Drive URL
+  const fileId = url.match(/[-\w]{25,}/);
+  if (!fileId) return null;
+  // Use the preview URL instead of download URL
+  return `https://drive.google.com/file/d/${fileId[0]}/preview`;
+}
+
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
@@ -58,9 +66,20 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   if (type === 'reddit' && isRedditPost(content)) {
     // Video/GIF content
     if (content.Media === 'Gif/Video' && content['URL Gdrive']) {
+      const videoUrl = getGoogleDriveDirectUrl(content['URL Gdrive']);
+      if (!videoUrl) {
+        console.error('Invalid Google Drive URL:', content['URL Gdrive']);
+        return null;
+      }
+
       return (
-        <div className="touch-none" style={{ touchAction: 'none' }}>
-          <VideoPlayer src={content['URL Gdrive']} />
+        <div className="relative w-full pt-[56.25%]">
+          <iframe
+            src={videoUrl}
+            className="absolute top-0 left-0 w-full h-full rounded-lg"
+            allow="autoplay"
+            allowFullScreen
+          />
         </div>
       );
     }
@@ -93,9 +112,20 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   // Handle Instagram content
   if (type === 'instagram' && isIGPost(content)) {
     if (content.Instagram_GDrive) {
+      const videoUrl = getGoogleDriveDirectUrl(content.Instagram_GDrive);
+      if (!videoUrl) {
+        console.error('Invalid Google Drive URL:', content.Instagram_GDrive);
+        return null;
+      }
+
       return (
-        <div className="touch-none" style={{ touchAction: 'none' }}>
-          <VideoPlayer src={content.Instagram_GDrive} />
+        <div className="relative w-full pt-[100%]">
+          <iframe
+            src={videoUrl}
+            className="absolute top-0 left-0 w-full h-full rounded-lg"
+            allow="autoplay"
+            allowFullScreen
+          />
         </div>
       );
     }
@@ -127,11 +157,10 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
 
   // Log why nothing was rendered
   console.log('No content rendered because:', {
-    contentType: type,
-    hasRedditImage: isRedditPost(content) && content.Media === 'Image' && content.Image?.[0]?.url,
-    hasRedditVideo: isRedditPost(content) && content.Media === 'Gif/Video' && content['URL Gdrive'],
-    hasIGVideo: isIGPost(content) && content.Instagram_GDrive,
-    hasIGImage: isIGPost(content) && content.Thumbnail?.[0]?.url,
+    type,
+    isRedditPost: isRedditPost(content),
+    isRedditVideo: isRedditPost(content) && content.Media === 'Gif/Video',
+    hasGDriveUrl: isRedditPost(content) && !!content['URL Gdrive'],
     content: JSON.stringify(content, null, 2)
   });
 
