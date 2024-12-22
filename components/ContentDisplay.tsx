@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import { IGPost, RedditPost } from '@/lib/airtable';
+import Lightbox from 'yet-another-react-lightbox';
+import 'yet-another-react-lightbox/styles.css';
 
 interface ContentDisplayProps {
   content: IGPost | RedditPost;
@@ -10,6 +12,7 @@ interface ContentDisplayProps {
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   const isReel = type === 'instagram' && 'Instagram GDrive' in content && content['Instagram GDrive'];
   const isRedditVideo = type === 'reddit' && content.Media === 'Gif/Video';
@@ -107,30 +110,49 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   });
 
   return (
-    <div className="relative w-full aspect-[9/16] max-w-[400px] mx-auto">
-      {isRedditVideo && directVideoUrl ? (
-        <div className="relative w-full h-full">
-          <iframe
-            src={directVideoUrl}
-            className="w-full h-full"
-            allow="autoplay"
-            allowFullScreen
-          />
-        </div>
-      ) : redditImage ? (
-        <Image
-          src={redditImage}
-          alt={redditPost.Title || 'Reddit post'}
-          fill
-          sizes="(max-width: 400px) 100vw, 400px"
-          priority={true}
-          className="object-cover rounded-lg"
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-          <span className="text-gray-400">No preview available</span>
-        </div>
-      )}
-    </div>
+    <>
+      <div className="relative w-full aspect-[9/16] max-w-[400px] mx-auto">
+        {isRedditVideo && directVideoUrl ? (
+          <div className="relative w-full h-full">
+            <iframe
+              src={directVideoUrl}
+              className="w-full h-full"
+              allow="autoplay"
+              allowFullScreen
+            />
+          </div>
+        ) : redditImage ? (
+          <div 
+            className="cursor-pointer" 
+            onClick={() => setIsLightboxOpen(true)}
+          >
+            <Image
+              src={redditImage}
+              alt={redditPost.Title || 'Reddit post'}
+              fill
+              sizes="(max-width: 400px) 100vw, 400px"
+              priority={true}
+              className="object-cover rounded-lg"
+            />
+          </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+            <span className="text-gray-400">No preview available</span>
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox */}
+      <Lightbox
+        open={isLightboxOpen}
+        close={() => setIsLightboxOpen(false)}
+        slides={[{ src: redditImage || '' }]}
+        carousel={{ finite: true }}
+        render={{ 
+          buttonPrev: () => null,
+          buttonNext: () => null
+        }}
+      />
+    </>
   );
 } 
