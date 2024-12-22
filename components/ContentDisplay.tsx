@@ -10,6 +10,7 @@ interface IGPost {
   id: string;
   caption?: string;
   'Instagram GDrive'?: string;
+  Thumbnail?: Array<{ url: string }>;
   'Done Meli': boolean;
 }
 
@@ -46,8 +47,10 @@ function isIGPost(content: any): content is IGPost {
   return (
     content &&
     typeof content === 'object' &&
-    Array.isArray(content.Thumbnail) &&
-    content.Thumbnail.length > 0
+    (
+      'Instagram GDrive' in content ||
+      (Array.isArray(content.Thumbnail) && content.Thumbnail.length > 0)
+    )
   );
 }
 
@@ -111,10 +114,10 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
 
   // Handle Instagram content
   if (type === 'instagram' && isIGPost(content)) {
-    if (content.Instagram_GDrive) {
-      const videoUrl = getGoogleDriveDirectUrl(content.Instagram_GDrive);
+    if (content['Instagram GDrive']) {
+      const videoUrl = getGoogleDriveDirectUrl(content['Instagram GDrive']);
       if (!videoUrl) {
-        console.error('Invalid Google Drive URL:', content.Instagram_GDrive);
+        console.error('Invalid Google Drive URL:', content['Instagram GDrive']);
         return null;
       }
 
