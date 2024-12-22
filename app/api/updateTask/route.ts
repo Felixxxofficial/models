@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateTask } from '@/lib/airtable';
+import { updateDoneStatus } from '@/lib/airtable';
 
 export async function POST(request: Request) {
   try {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await updateTask(taskId, done, isInstagram);
+    const result = await updateDoneStatus(taskId, done, isInstagram);
     return NextResponse.json({ success: true, data: result });
     
   } catch (error) {
