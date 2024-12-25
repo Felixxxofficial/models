@@ -3,156 +3,84 @@ import Image from 'next/image';
 import { IGPost, RedditPost } from '@/lib/airtable';
 import Lightbox from 'yet-another-react-lightbox';
 import 'yet-another-react-lightbox/styles.css';
+import VideoPlayer from './VideoPlayer';
 
 interface ContentDisplayProps {
-  content: IGPost | RedditPost;
+  content: any;
   type: 'instagram' | 'reddit';
 }
 
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  console.log('Full content object:', JSON.stringify(content, null, 2))
 
-  const isReel = type === 'instagram' && 'Instagram GDrive' in content && content['Instagram GDrive'];
-  const isRedditVideo = type === 'reddit' && content.Media === 'Gif/Video';
-  const isVideo = isReel || isRedditVideo;
+  const [isError, setIsError] = useState(false);
 
-  // Convert Google Drive view URL to embed URL
-  const getDirectVideoUrl = (driveUrl: string) => {
-    if (!driveUrl) return '';
+  const getMediaUrl = () => {
+    console.log('Getting media URL from:', content);
     
-    // Extract file ID from various Google Drive URL formats
-    let fileId = '';
-    if (driveUrl.includes('/file/d/')) {
-      fileId = driveUrl.split('/file/d/')[1].split('/')[0];
-    } else if (driveUrl.includes('id=')) {
-      fileId = driveUrl.split('id=')[1].split('&')[0];
-    }
-    
-    if (!fileId) {
-      console.error('Could not extract file ID from URL:', driveUrl);
-      return '';
-    }
-
-    // Use the embed URL format
-    return `https://drive.google.com/file/d/${fileId}/preview`;
-  };
-
-  const handleVideoClick = () => {
-    if (!videoRef.current) return;
-    
-    try {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.error('Error playing video:', error);
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error handling video click:', error);
+    if (type === 'instagram') {
+      const instagramUrl = content['Instagram GDrive']?.replace('/preview', '/view')
+      console.log('Instagram URL:', instagramUrl);
+      return instagramUrl;
+    } else {
+      const mediaUrl = content['URL Gdrive']
+      console.log('Reddit URL:', mediaUrl);
+      return mediaUrl;
     }
   };
 
-  if (type === 'instagram') {
-    const igPost = content as IGPost;
-    const thumbnail = igPost.Thumbnail?.[0]?.url;
-    const videoUrl = igPost['Instagram GDrive'];
-    const directVideoUrl = videoUrl ? getDirectVideoUrl(videoUrl) : '';
+  const getThumbnailUrl = () => {
+    return content.Thumbnail?.[0]?.url;
+  };
 
+  const isVideo = (url: string) => {
+    if (!url) return false;
+    
+    return url?.match(/\.(mp4|webm|ogg)$/i) || 
+           url?.includes('video') ||
+           url?.includes('drive.google.com') ||
+           content.Type === 'Reels' ||
+           content.Type === 'video';
+  };
+
+  const mediaUrl = getMediaUrl();
+  const thumbnailUrl = getThumbnailUrl();
+  
+  console.log('Content type:', type);
+  console.log('Content Type field:', content.Type);
+  console.log('Final mediaUrl:', mediaUrl);
+  console.log('Final thumbnailUrl:', thumbnailUrl);
+
+  if (!mediaUrl) {
+    return <div className="h-48 bg-gray-100 flex items-center justify-center">No media</div>;
+  }
+
+  if (isVideo(mediaUrl)) {
     return (
-      <div className="relative w-full aspect-[9/16] max-w-[400px] mx-auto">
-        {thumbnail ? (
-          isReel && directVideoUrl ? (
-            <div className="relative w-full h-full">
-              <iframe
-                src={directVideoUrl}
-                className="w-full h-full"
-                allow="autoplay"
-                allowFullScreen
-              />
-            </div>
-          ) : (
-            <Image
-              src={thumbnail}
-              alt={igPost.title || 'Instagram post'}
-              fill
-              sizes="(max-width: 400px) 100vw, 400px"
-              priority={true}
-              className="object-cover rounded-lg"
-            />
-          )
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-            <span className="text-gray-400">No preview available</span>
-          </div>
-        )}
-      </div>
+      <VideoPlayer 
+        src={mediaUrl}
+        thumbnail={thumbnailUrl}
+      />
     );
   }
 
-  // Reddit content display
-  const redditPost = content as RedditPost;
-  const redditImage = redditPost.Image?.[0]?.url;
-  const redditVideoUrl = redditPost['URL Gdrive'];
-  const directVideoUrl = redditVideoUrl ? getDirectVideoUrl(redditVideoUrl) : '';
-
-  // Debug logs
-  console.log('Reddit Video Debug:', {
-    isRedditVideo,
-    originalUrl: redditVideoUrl,
-    processedUrl: directVideoUrl,
-    content: redditPost
-  });
-
+  // Handle images
   return (
     <>
-      <div className="relative w-full aspect-[9/16] max-w-[400px] mx-auto">
-        {isRedditVideo && directVideoUrl ? (
-          <div className="relative w-full h-full">
-            <iframe
-              src={directVideoUrl}
-              className="w-full h-full"
-              allow="autoplay"
-              allowFullScreen
-            />
-          </div>
-        ) : redditImage ? (
-          <div 
-            className="cursor-pointer" 
-            onClick={() => setIsLightboxOpen(true)}
-          >
-            <Image
-              src={redditImage}
-              alt={redditPost.Title || 'Reddit post'}
-              fill
-              sizes="(max-width: 400px) 100vw, 400px"
-              priority={true}
-              className="object-cover rounded-lg"
-            />
-          </div>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-            <span className="text-gray-400">No preview available</span>
-          </div>
-        )}
-      </div>
-
-      {/* Lightbox */}
-      <Lightbox
-        open={isLightboxOpen}
-        close={() => setIsLightboxOpen(false)}
-        slides={[{ src: redditImage || '' }]}
-        carousel={{ finite: true }}
-        render={{ 
-          buttonPrev: () => null,
-          buttonNext: () => null
-        }}
-      />
+      {!isError ? (
+        <Image
+          src={mediaUrl}
+          alt="Content"
+          width={300}
+          height={192}
+          className="w-full h-48 object-cover"
+          onError={() => setIsError(true)}
+        />
+      ) : (
+        <div className="h-48 bg-gray-100 flex items-center justify-center">
+          Failed to load image
+        </div>
+      )}
     </>
   );
 } 
