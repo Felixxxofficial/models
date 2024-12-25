@@ -1,18 +1,31 @@
-import { withAuth } from "next-auth/middleware"
+import { getToken } from "next-auth/jwt"
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-export default withAuth({
-  callbacks: {
-    authorized: ({ token }) => {
-      // Only allow specific emails
-      const allowedEmails = ['janota.d@gmail.com', 'client2@gmail.com']
-      return token ? allowedEmails.includes(token.email ?? '') : false
-    },
-  },
-})
+export async function middleware(request: NextRequest) {
+  const token = await getToken({ req: request })
+  const isAuthPage = request.nextUrl.pathname === "/"
+
+  if (isAuthPage) {
+    if (token) {
+      // If user is authenticated and trying to access auth page, redirect to dailytasks
+      return NextResponse.redirect(new URL("/dailytasks", request.url))
+    }
+  } else {
+    // Protect other routes
+    if (!token) {
+      // If user is not authenticated and trying to access protected route, redirect to login
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+  }
+
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/dailytasks/:path*"
+    "/",
+    "/dailytasks",
+    // Add other protected routes here
   ]
 } 

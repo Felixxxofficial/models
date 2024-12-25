@@ -15,13 +15,17 @@ const handler = NextAuth({
       return !!userConfigs[user.email ?? '']
     },
     async session({ session }) {
-      console.log("Session callback:", session); // Debug log
+      console.log("Session callback:", session);
       return session;
     },
   },
   pages: {
     signIn: '/login',
-    error: '/login', // Add error page redirect
+    error: '/login',
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 365 * 24 * 60 * 60, // 1 year in seconds
   },
 })
 
