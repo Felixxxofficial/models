@@ -21,6 +21,9 @@ import {
   updateDoneStatus,
 } from "@/lib/airtable";
 
+import { useSession } from "next-auth/react";
+import { userConfigs } from "@/lib/user-config";
+
 const ITEMS_PER_PAGE = 9;
 
 // Helpers to distinguish Reddit vs Instagram
@@ -44,7 +47,10 @@ interface TaskCardProps {
   type: "instagram" | "reddit";
 }
 function TaskCard({ task, index, onDone, type }: TaskCardProps) {
-  const [isDone, setIsDone] = useState(task["Done Meli"] || false);
+  const { data: session } = useSession();
+  const userConfig = session?.user?.email ? userConfigs[session.user.email] : null;
+  
+  const [isDone, setIsDone] = useState(task[`Done ${userConfig?.name}`] || false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -60,7 +66,7 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
   };
 
   const handleUpload = () => {
-    const uploadUrl = task["Upload Content Meli"];
+    const uploadUrl = task[`Upload Content ${userConfig?.name}`];
     
     if (uploadUrl) {
       window.open(uploadUrl, '_blank');
@@ -135,6 +141,9 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
 // DailyTasks: The main page
 // ─────────────────────────────────────────────────────────────
 export default function DailyTasks() {
+  const { data: session } = useSession();
+  const userConfig = session?.user?.email ? userConfigs[session.user.email] : null;
+  
   const [igTasks, setIgTasks] = useState<IGPost[]>([]);
   const [redditTasks, setRedditTasks] = useState<RedditPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -209,8 +218,8 @@ export default function DailyTasks() {
     }
 
     // 2) Keep only tasks that are NOT done
-    return filtered.filter((task) => !task["Done Meli"]);
-  }, [igTasks, redditTasks, contentTypeFilter]);
+    return filtered.filter((task) => !task[`Done ${userConfig?.name}`]);
+  }, [igTasks, redditTasks, contentTypeFilter, userConfig]);
 
   const doneTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
@@ -229,13 +238,13 @@ export default function DailyTasks() {
     }
 
     // Keep only tasks that ARE done
-    return filtered.filter((task) => task["Done Meli"]);
-  }, [igTasks, redditTasks, contentTypeFilter]);
+    return filtered.filter((task) => task[`Done ${userConfig?.name}`]);
+  }, [igTasks, redditTasks, contentTypeFilter, userConfig]);
 
   // Which list is visible (To-Do or Done)?
   const currentTasks = activeTab === "todo" ? todoTasks : doneTasks;
 
-  // ───────────────────���────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Paginate with infinite scroll
   // ────────────────────────────────────────────────────────────
   const visibleTasks = useMemo(
@@ -266,7 +275,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Handle toggling "Done" => moves from To-Do to Done
-  // ─────────────────────────────���──────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
       const response = await fetch('/api/airtable', {
@@ -300,7 +309,7 @@ export default function DailyTasks() {
     }
   };
 
-  // ──────────────────────────────────────────────────────���─────
+  // ────────────────────────────────────────────────────────────
   // Overall progress
   // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
@@ -314,7 +323,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Rendering
-  // ────────────────────────────────────────────────────────────
+  // ─────────────────────��──────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
