@@ -11,6 +11,7 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
   const videoRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [videoUrl, setVideoUrl] = useState('')
 
   const getGoogleDriveId = (url: string) => {
     const match = url.match(/\/d\/([^/]+)/)
@@ -20,13 +21,17 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
   const getVideoUrl = (url: string) => {
     const driveId = getGoogleDriveId(url)
     if (driveId) {
-      return `https://drive.google.com/file/d/${driveId}/preview`
+      return `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&supportsAllDrives=True&key=${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}`
     }
     return url
   }
 
   const playVideo = async () => {
-    setIsPlaying(true)
+    if (!isPlaying) {
+      const embedUrl = getVideoUrl(src)
+      setIsPlaying(true)
+      setVideoUrl(embedUrl)
+    }
   }
 
   useEffect(() => {
@@ -51,8 +56,6 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
     }
   }, [isPlaying])
 
-  const videoUrl = getVideoUrl(src)
-
   return (
     <div 
       ref={containerRef}
@@ -65,16 +68,17 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
             <img 
               src={thumbnail} 
               alt="Video thumbnail"
-              className="absolute inset-0 w-full h-full object-cover rounded-lg"
+              className="absolute inset-0 w-full h-full object-cover rounded-lg cursor-pointer"
+              onClick={playVideo}
             />
           )}
           <div 
             className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg cursor-pointer"
-            style={{ touchAction: 'none' }}
+            onClick={playVideo}
           >
-            <div className="w-16 h-16 flex items-center justify-center rounded-full bg-white/90 hover:bg-white transition-colors">
+            <div className="w-16 h-16 flex items-center justify-center rounded-full bg-white/90">
               <svg 
-                className="w-8 h-8 text-black ml-1 pointer-events-none"
+                className="w-8 h-8 text-black ml-1"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >
@@ -84,13 +88,17 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
           </div>
         </>
       ) : (
-        <iframe
-          ref={videoRef}
-          src={videoUrl}
-          className="w-full h-full rounded-lg"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
+        <div className="relative w-full h-full bg-black rounded-lg">
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            className="absolute inset-0 w-full h-full rounded-lg"
+            controls
+            autoPlay
+            muted
+            playsInline
+          />
+        </div>
       )}
     </div>
   )
