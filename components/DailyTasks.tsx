@@ -137,6 +137,18 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
   );
 }
 
+// Add these motivational messages
+const motivationalMessages = [
+  "Great job! 🌟",
+  "You're crushing it! 💪",
+  "Keep up the amazing work! 🚀",
+  "Awesome progress! ⭐",
+  "You're on fire! 🔥",
+  "Way to go! 🎯",
+  "Fantastic work! 🌈",
+  "You're unstoppable! 💫",
+];
+
 // ─────────────────────────────────────────────────────────────
 // DailyTasks: The main page
 // ─────────────────────────────────────────────────────────────
@@ -297,12 +309,22 @@ export default function DailyTasks() {
         );
       }
 
-      setMessage("Task updated successfully!");
-      setShowMessage(true);
-      setTimeout(() => setShowMessage(false), 2500);
+      if (done) {
+        // Trigger confetti
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+
+        // Show random motivational message
+        const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+        setMessage(randomMessage);
+        setShowMessage(true);
+        setTimeout(() => setShowMessage(false), 3000);
+      }
     } catch (error) {
       console.error("Error updating task:", error);
-      // Show error message to user
       setMessage("Failed to update task. Please try again.");
       setShowMessage(true);
       setTimeout(() => setShowMessage(false), 2500);
@@ -323,7 +345,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Rendering
-  // ─────────────────────��──────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
