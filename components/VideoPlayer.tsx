@@ -8,7 +8,7 @@ interface VideoPlayerProps {
 }
 
 export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
-  const videoRef = useRef<HTMLIFrameElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [videoUrl, setVideoUrl] = useState('')
@@ -21,40 +21,33 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
   const getVideoUrl = (url: string) => {
     const driveId = getGoogleDriveId(url)
     if (driveId) {
-      return `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&supportsAllDrives=True&key=${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}`
+      return `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&key=${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}&supportsAllDrives=true&acknowledgeAbuse=true`
     }
     return url
   }
 
   const playVideo = async () => {
     if (!isPlaying) {
-      const embedUrl = getVideoUrl(src)
-      setIsPlaying(true)
-      setVideoUrl(embedUrl)
-    }
-  }
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const handlePress = async (e: Event) => {
-      e.preventDefault()
-      e.stopPropagation()
-      
-      if (!isPlaying) {
-        await playVideo()
+      try {
+        const embedUrl = getVideoUrl(src)
+        setVideoUrl(embedUrl)
+        setIsPlaying(true)
+        
+        // Wait for video element to be ready
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.muted = false // Unmute the video
+            videoRef.current.play()
+            .catch(error => {
+              console.error('Error playing video:', error)
+            })
+          }
+        }, 100)
+      } catch (error) {
+        console.error('Error accessing video:', error)
       }
     }
-
-    container.addEventListener('touchstart', handlePress, { passive: false })
-    container.addEventListener('click', handlePress)
-
-    return () => {
-      container.removeEventListener('touchstart', handlePress)
-      container.removeEventListener('click', handlePress)
-    }
-  }, [isPlaying])
+  }
 
   return (
     <div 
@@ -94,9 +87,8 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
             src={videoUrl}
             className="absolute inset-0 w-full h-full rounded-lg"
             controls
-            autoPlay
-            muted
             playsInline
+            muted // Start muted to allow autoplay
           />
         </div>
       )}
