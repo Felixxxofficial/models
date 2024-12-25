@@ -34,6 +34,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'v5.airtableusercontent.com',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.google.com',
+        pathname: '/**',
       }
     ]
   },

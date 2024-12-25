@@ -1,12 +1,6 @@
-'use client'
-
-import DailyTasks from '@/components/DailyTasks'
+import { redirect } from 'next/navigation'
 
 export default function Home() {
-  return (
-    <main>
-      <DailyTasks />
-    </main>
-  )
+  redirect('/login')
 }
 
