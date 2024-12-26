@@ -97,10 +97,10 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
       transition={{ delay: (index ?? 0) * 0.05 }}
     >
       <Card className="overflow-hidden">
-        <CardContent className="p-4">
+        <CardContent className="p-2">
           <ContentDisplay content={task} type={type} />
 
-          <div className="flex flex-col gap-2 mt-3">
+          <div className="mt-2 space-y-2">
             {/* Upload and Toggle row */}
             <div className="flex justify-between items-center gap-2">
               <Button 
@@ -320,7 +320,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Paginate with infinite scroll
-  // ────────────────────────────────────────────────────────────
+  // ────────────────────────────────��───────────────────────────
   const visibleTasks = useMemo(
     () => currentTasks.slice(0, displayedItems),
     [currentTasks, displayedItems]
@@ -347,7 +347,7 @@ export default function DailyTasks() {
     };
   }, [currentTasks, displayedItems, isLoadingMore]);
 
-  // ────────────────────────────────────────────────���───────────
+  // ────────────────────────────────────────────────────────────
   // Handle toggling "Done" => moves from To-Do to Done
   // ────────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
@@ -407,7 +407,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Rendering
-  // ────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────���─────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

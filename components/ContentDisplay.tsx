@@ -46,7 +46,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   const thumbnailUrl = getThumbnailUrl();
 
   if (!mediaUrl) {
-    return <div className="h-48 bg-gray-100 flex items-center justify-center">No media</div>;
+    return <div className="h-[400px] w-full bg-gray-100 flex items-center justify-center">No media</div>;
   }
 
   if (isVideo()) {
@@ -62,17 +62,17 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   return (
     <>
       {!isError ? (
-        <div className="relative h-48 cursor-pointer" onClick={() => setShowLightbox(true)}>
+        <div className="relative h-[400px] w-full cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setShowLightbox(true)}>
           <Image
             src={mediaUrl}
             alt="Content"
             fill
-            className="object-contain"
+            className="object-contain rounded-lg"
             onError={() => setIsError(true)}
           />
         </div>
       ) : (
-        <div className="h-48 bg-gray-100 flex items-center justify-center">
+        <div className="h-[400px] w-full bg-gray-100 flex items-center justify-center rounded-lg">
           Failed to load image
         </div>
       )}
