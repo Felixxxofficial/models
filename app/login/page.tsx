@@ -11,8 +11,8 @@ export default function LoginPage() {
           <div className="text-center">
             <div className="mb-8">
               <Image
-                src="/model5-removebg.png"
-                alt="Belle Vie Logo"
+                src="/elite.webp"
+                alt="Elite Models Club"
                 width={120}
                 height={120}
                 className="mx-auto"
