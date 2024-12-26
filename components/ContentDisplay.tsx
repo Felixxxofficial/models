@@ -11,6 +11,7 @@ interface ContentDisplayProps {
 }
 
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
+  console.log('Content fields available:', Object.keys(content));
   console.log('Full content object:', JSON.stringify(content, null, 2))
 
   const [isError, setIsError] = useState(false);
@@ -23,7 +24,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
       console.log('Instagram URL:', instagramUrl);
       return instagramUrl;
     } else {
-      const mediaUrl = content['URL Gdrive']
+      const mediaUrl = content['Image']?.[0]?.url || content['URL Gdrive']
       console.log('Reddit URL:', mediaUrl);
       return mediaUrl;
     }
@@ -33,12 +34,12 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
     return content.Thumbnail?.[0]?.url;
   };
 
-  const isVideo = (url: string) => {
-    if (!url) return false;
+  const isVideo = (url: string | undefined) => {
+    if (!url || typeof url !== 'string') return false;
     
-    return url?.match(/\.(mp4|webm|ogg)$/i) || 
-           url?.includes('video') ||
-           url?.includes('drive.google.com') ||
+    return url.match(/\.(mp4|webm|ogg)$/i) || 
+           url.includes('video') ||
+           url.includes('drive.google.com') ||
            content.Type === 'Reels' ||
            content.Type === 'video';
   };
