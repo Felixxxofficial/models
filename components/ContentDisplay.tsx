@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { IGPost, RedditPost } from '@/lib/airtable';
 import VideoPlayer from './VideoPlayer';
+import { ImageLightbox } from '@/components/ImageLightbox';
 
 interface ContentDisplayProps {
   content: any;
@@ -10,18 +11,15 @@ interface ContentDisplayProps {
 
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   const [isError, setIsError] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   const getMediaUrl = () => {
     if (type === 'instagram') {
-      // Instagram reels - keep existing logic
       return content['Instagram GDrive']?.replace('/preview', '/view');
     } else {
-      // Reddit content
       if (content.Media === 'Gif/Video') {
-        // For videos, use the Google Drive URL
         return content['URL Gdrive'];
       } else {
-        // For images, use the attachment URL
         return content.Image?.[0]?.url;
       }
     }
@@ -31,7 +29,6 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
     if (type === 'instagram') {
       return content.Thumbnail?.[0]?.url;
     } else if (type === 'reddit' && content.Media === 'Gif/Video') {
-      // Use Image field as thumbnail for Reddit videos
       return content.Image?.[0]?.url;
     }
     return null;
@@ -39,7 +36,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
 
   const isVideo = () => {
     if (type === 'instagram') {
-      return true; // Instagram content is always video (reels)
+      return true;
     } else {
       return content.Media === 'Gif/Video';
     }
@@ -61,22 +58,32 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
     );
   }
 
-  // Handle images
+  // Handle images with lightbox
   return (
     <>
       {!isError ? (
-        <Image
-          src={mediaUrl}
-          alt="Content"
-          width={300}
-          height={192}
-          className="w-full h-48 object-cover"
-          onError={() => setIsError(true)}
-        />
+        <div className="relative h-48 cursor-pointer" onClick={() => setShowLightbox(true)}>
+          <Image
+            src={mediaUrl}
+            alt="Content"
+            fill
+            className="object-contain"
+            onError={() => setIsError(true)}
+          />
+        </div>
       ) : (
         <div className="h-48 bg-gray-100 flex items-center justify-center">
           Failed to load image
         </div>
+      )}
+
+      {/* Lightbox */}
+      {showLightbox && (
+        <ImageLightbox
+          isOpen={showLightbox}
+          onClose={() => setShowLightbox(false)}
+          imageUrl={mediaUrl}
+        />
       )}
     </>
   );
