@@ -9,27 +9,34 @@ interface ContentDisplayProps {
   type: 'instagram' | 'reddit';
 }
 
+const formatGDriveUrl = (url: string) => {
+  if (!url) return '';
+  
+  // Extract file ID from Google Drive URL
+  const match = url.match(/\/d\/(.+?)\/view/) || url.match(/id=([^&]+)/);
+  if (!match) return url;
+  
+  const fileId = match[1];
+  return `https://drive.google.com/uc?export=view&id=${fileId}`;
+};
+
 export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   const [isError, setIsError] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
 
   const getMediaUrl = () => {
     if (type === 'instagram') {
-      return content['Instagram GDrive']?.replace('/preview', '/view');
+      return formatGDriveUrl(content['Instagram GDrive']);
     } else {
-      if (content.Media === 'Gif/Video') {
-        return content['URL Gdrive'];
-      } else {
-        return content.Image?.[0]?.url;
-      }
+      return formatGDriveUrl(content['URL Gdrive']);
     }
   };
 
   const getThumbnailUrl = () => {
     if (type === 'instagram') {
-      return content.Thumbnail?.[0]?.url;
+      return formatGDriveUrl(content['GDrive Thumbnail']);
     } else if (type === 'reddit' && content.Media === 'Gif/Video') {
-      return content.Image?.[0]?.url;
+      return formatGDriveUrl(content['URL Thumbnail']);
     }
     return null;
   };
@@ -50,6 +57,8 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
   }
 
   if (isVideo()) {
+    console.log('Video URL:', mediaUrl);
+    console.log('Thumbnail URL:', thumbnailUrl);
     return (
       <VideoPlayer 
         src={mediaUrl}
@@ -67,6 +76,7 @@ export default function ContentDisplay({ content, type }: ContentDisplayProps) {
             src={mediaUrl}
             alt="Content"
             fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-contain rounded-lg"
             onError={() => setIsError(true)}
           />

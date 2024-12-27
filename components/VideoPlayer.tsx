@@ -14,11 +14,11 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
   const [videoUrl, setVideoUrl] = useState('')
 
   const getGoogleDriveId = (url: string) => {
-    const match = url.match(/\/d\/([^/]+)/)
+    const match = url.match(/id=([^&]+)/) || url.match(/\/d\/([^/]+)/)
     return match ? match[1] : null
   }
 
-  const getVideoUrl = (url: string) => {
+  const getGoogleApiUrl = (url: string) => {
     const driveId = getGoogleDriveId(url)
     if (driveId) {
       return `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&key=${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}&supportsAllDrives=true&acknowledgeAbuse=true`
@@ -29,14 +29,14 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
   const playVideo = async () => {
     if (!isPlaying) {
       try {
-        const embedUrl = getVideoUrl(src)
+        const embedUrl = src.includes('uc?export=view') ? getGoogleApiUrl(src) : src
+        console.log('Setting video URL to:', embedUrl)
         setVideoUrl(embedUrl)
         setIsPlaying(true)
         
-        // Wait for video element to be ready
         setTimeout(() => {
           if (videoRef.current) {
-            videoRef.current.muted = false // Unmute the video
+            videoRef.current.muted = false
             videoRef.current.play()
             .catch(error => {
               console.error('Error playing video:', error)
@@ -59,10 +59,11 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
         <>
           {thumbnail && (
             <img 
-              src={thumbnail} 
+              src={thumbnail.includes('uc?export=view') ? getGoogleApiUrl(thumbnail) : thumbnail}
               alt="Video thumbnail"
               className="absolute inset-0 w-full h-full object-cover rounded-lg cursor-pointer"
               onClick={playVideo}
+              onError={(e) => console.error('Thumbnail failed to load:', thumbnail)}
             />
           )}
           <div 
@@ -89,6 +90,7 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
             controls
             playsInline
             muted // Start muted to allow autoplay
+            onError={(e) => console.error('Video failed to load:', videoUrl)}
           />
         </div>
       )}
