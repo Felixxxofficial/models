@@ -105,66 +105,14 @@ function getAirtableBase() {
   }
 }
 
-export async function fetchIGPosts(): Promise<IGPost[]> {
+export async function fetchIGPosts(viewId: string): Promise<IGPost[]> {
   try {
-    const base = getAirtableBase();
-    if (!base) {
-      throw new Error('Could not initialize Airtable base');
-    }
-
-    const headers = {
-      Authorization: `Bearer ${process.env.AIRTABLE_API_KEY}`,
-    };
-
-    const viewName = process.env.AIRTABLE_VIEW_MELI || DEFAULT_VIEW;
-    const tableId = process.env.AIRTABLE_IG;
-
-    if (!tableId) {
-      throw new Error('Airtable table ID is not defined');
-    }
-
-    const records = await base(tableId)
-      .select({
-        view: viewName,
-        maxRecords: 100,
-        pageSize: 10,
-        _options: { headers }
-      })
-      .all();
-
-    // Process records with proper type annotations
-    const processedRecords = records
-      .map((record: AirtableRecord): IGPost | null => {
-        try {
-          return {
-            id: record.id,
-            title: record.get('Title') as string || '',
-            caption: record.get('Caption') as string || '',
-            status: record.get('Status') as string || '',
-            deadline: record.get('Deadline') as string || '',
-            'Instagram GDrive': record.get('Instagram GDrive') as string || '',
-            'Upload Content Meli': record.get('Upload Content Meli') as string || '',
-            'Done Meli': Boolean(record.get('Done Meli')),
-            Thumbnail: record.get('Thumbnail') as AirtableAttachment[] || [],
-            isUrgent: Boolean(record.get('isUrgent')),
-            notes: record.get('Notes') as string || '',
-            type: (record.get('Content Type') as 'image' | 'video' | 'story') || 'image',
-            uploaded: Boolean(record.get('Uploaded')),
-          };
-        } catch (recordError) {
-          console.error('Error processing record:', record.id, recordError);
-          return null;
-        }
-      })
-      .filter((record: IGPost | null): record is IGPost => record !== null);
-
-    return processedRecords;
+    const response = await fetch(`/api/instagram?viewId=${viewId}`);
+    if (!response.ok) throw new Error('Failed to fetch IG posts');
+    return await response.json();
   } catch (error) {
     console.error('Error fetching IG posts:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', error.message);
-    }
-    return [];
+    throw error;
   }
 }
 
@@ -215,40 +163,13 @@ export async function updateDoneStatus(
   }
 }
 
-export async function fetchRedditPosts(): Promise<RedditPost[]> {
+export async function fetchRedditPosts(viewId: string): Promise<RedditPost[]> {
   try {
-    const baseId = process.env.AIRTABLE_REDDIT_BASE_ID;
-    const tableId = process.env.AIRTABLE_REDDIT_TABLE_ID;
-    const viewId = process.env.AIRTABLE_REDDIT_VIEW_ID;
-    const apiKey = process.env.AIRTABLE_API_KEY;
-
-    const url = `https://api.airtable.com/v0/${baseId}/${tableId}?view=${viewId}`;
-    console.log('Fetching Reddit posts from:', url);
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      next: { revalidate: 60 },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Reddit API Error:', errorText);
-      throw new Error('Failed to fetch Reddit posts');
-    }
-
-    const data = await response.json();
-    console.log('Reddit data received:', data);
-    
-    // Map the records and ensure Image field is included
-    return data.records.map((record: any) => ({
-      id: record.id,
-      ...record.fields,
-      Image: record.fields.Image || []
-    }));
+    const response = await fetch(`/api/reddit?viewId=${viewId}`);
+    if (!response.ok) throw new Error('Failed to fetch Reddit posts');
+    return await response.json();
   } catch (error) {
     console.error('Error fetching Reddit posts:', error);
-    return [];
+    throw error;
   }
 } 

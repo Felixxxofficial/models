@@ -214,7 +214,7 @@ const motivationalMessages = [
 
 // ────────────────────────────────────────────────────────────
 // DailyTasks: The main page
-// ───────────────────────────��────────────────────────────────
+// ────────────────────────────────────────────────────────────
 export default function DailyTasks() {
   const { data: session } = useSession();
   const userEmail = session?.user?.email;
@@ -243,28 +243,35 @@ export default function DailyTasks() {
   const [showMessage, setShowMessage] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ─────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────���─────────────────────
   // Fetch data once (both IG + Reddit)
   // ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    (async () => {
+    const fetchData = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const response = await fetch('/api/airtable');
-        const data = await response.json();
-        
-        if (!response.ok) throw new Error(data.error);
-        
-        setIgTasks(data.instagram);
-        setRedditTasks(data.reddit);
-      } catch (err) {
-        console.error("Error fetching tasks:", err);
-        setError("Failed to load tasks. Please try again later.");
-      } finally {
-        setIsLoading(false);
+        if (!userConfig?.igViewId || !userConfig?.redditViewId) {
+          throw new Error('User view IDs not found');
+        }
+
+        const [igData, redditData] = await Promise.all([
+          fetchIGPosts(userConfig.igViewId),
+          fetchRedditPosts(userConfig.redditViewId)
+        ]);
+
+        setIgTasks(igData);
+        setRedditTasks(redditData);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        setError('Failed to load tasks. Please try again later.');
       }
-    })();
-  }, []);
+      setIsLoading(false);
+    };
+
+    if (userConfig) {
+      fetchData();
+    }
+  }, [userConfig]);
 
   // ───────────────────────────────────────────────────────────
   // Counters for the filter buttons
@@ -403,7 +410,7 @@ export default function DailyTasks() {
     }
   };
 
-  // ──────────────────────────────────────────────────────���────
+  // ────────────────────────────────────────────────────────────
   // Overall progress
   // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
