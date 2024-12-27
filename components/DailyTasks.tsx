@@ -23,6 +23,7 @@ import {
 
 import { useSession } from "next-auth/react";
 import { userConfigs } from "@/lib/user-config";
+import { MotivationalMessage } from "./MotivationalMessage";
 
 const ITEMS_PER_PAGE = 9;
 
@@ -213,11 +214,20 @@ const motivationalMessages = [
 
 // ────────────────────────────────────────────────────────────
 // DailyTasks: The main page
-// ────────────────────────────────────────────────────────────
+// ───────────────────────────��────────────────────────────────
 export default function DailyTasks() {
   const { data: session } = useSession();
-  const userConfig = session?.user?.email ? userConfigs[session.user.email] : null;
-  
+  const userEmail = session?.user?.email;
+  const userConfig = userEmail ? userConfigs[userEmail] : null;
+
+  // More detailed logging
+  console.log('DailyTasks Debug:', JSON.stringify({
+    sessionEmail: session?.user?.email,
+    userEmail,
+    userConfigName: userConfig?.name,
+    fullUserConfig: userConfig
+  }, null, 2));
+
   const [igTasks, setIgTasks] = useState<IGPost[]>([]);
   const [redditTasks, setRedditTasks] = useState<RedditPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -233,7 +243,7 @@ export default function DailyTasks() {
   const [showMessage, setShowMessage] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ─────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
   // ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -258,7 +268,7 @@ export default function DailyTasks() {
 
   // ───────────────────────────────────────────────────────────
   // Counters for the filter buttons
-  // ────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
     const reelsCount = igTasks.length;
     const imagesCount = redditTasks.filter((t) => t.Media === "Image").length;
@@ -320,7 +330,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Paginate with infinite scroll
-  // ────────────────────────────────��───────────────────────────
+  // ───────────────────────────────────────────────────────────────
   const visibleTasks = useMemo(
     () => currentTasks.slice(0, displayedItems),
     [currentTasks, displayedItems]
@@ -393,7 +403,7 @@ export default function DailyTasks() {
     }
   };
 
-  // ────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────���────
   // Overall progress
   // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
@@ -407,7 +417,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Rendering
-  // ──────────────────────────────────────────────────���─────────
+  // ────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -423,19 +433,39 @@ export default function DailyTasks() {
     );
   }
 
+  console.log('Rendering DailyTasks with:', {
+    userName: userConfig?.name,
+    todoCount: todoTasks.length,
+    doneCount: doneTasks.length
+  });
+
   return (
     <div className="py-6 max-w-7xl mx-auto px-4">
       {/* Progress Section */}
       <div className="bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg p-6 mb-8 text-white">
-        <h1 className="text-2xl font-bold mb-2">Today's Progress</h1>
-        <p className="mb-4">{progressStats.remaining} tasks to conquer! Let's go! 💪</p>
-        <div className="w-full bg-white/30 rounded-full h-4 mb-2">
+        <h1 className="text-2xl font-bold mb-2">
+          {userConfig?.name ? `${userConfig.name}'s Progress` : "Today's Progress"}
+        </h1>
+        
+        {/* Motivational message based on progress */}
+        <p className="mb-4">
+          {progressStats.remaining === 0 
+            ? "Amazing job! You've completed all tasks! 🎉" 
+            : `${progressStats.remaining} tasks to conquer! You've got this! 💪`
+          }
+        </p>
+
+        <div className="w-full bg-white/20 rounded-full h-2.5 mb-3">
           <div
-            className="bg-white rounded-full h-4 transition-all duration-500"
+            className="bg-white h-2.5 rounded-full transition-all duration-500"
             style={{ width: `${progressStats.percentage}%` }}
           />
         </div>
-        <p>{progressStats.completed} of {progressStats.total} tasks completed</p>
+
+        <p className="text-lg">
+          {progressStats.completed} of {progressStats.total} tasks completed
+          {progressStats.percentage >= 50 && " - You're crushing it! 🌟"}
+        </p>
       </div>
 
       {/* Filter by content type */}
@@ -514,6 +544,11 @@ export default function DailyTasks() {
           {message}
         </div>
       )}
+
+      {/* Add this debugging info */}
+      <div className="text-sm text-gray-500 mb-2">
+        Debug: Email={userEmail}, Name={userConfig?.name}
+      </div>
     </div>
   );
 }

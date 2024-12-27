@@ -1,16 +1,12 @@
-type UserConfig = {
-  airtableView: string;
+export const userConfigs: Record<string, {
   name: string;
-}
-
-export const userConfigs: { [email: string]: UserConfig } = {
-  'janota.d@gmail.com': {
-    airtableView: 'viw7JbVroNNLqviTl', // Meli's view
-    name: 'Meli'
+  redditViewId: string;
+  igViewId: string;
+}> = {
+  "janota.d@gmail.com": {  // Make sure this matches the email you're logging in with
+    name: "Meli",             // This should be the name you want to display
+    redditViewId: "viwe30kukWSBattHl",
+    igViewId: "viw7JbVroNNLqviTl",
   },
-  'client2@gmail.com': {
-    airtableView: 'viewXXXXXXXXX', // Client2's view
-    name: 'Client2'
-  }
-  // Add any other emails you want to allow login for
-} 
+  // Add other users as needed
+}; 
