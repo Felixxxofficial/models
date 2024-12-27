@@ -6,7 +6,6 @@ import { authOptions } from "../auth/[...nextauth]/route";
 
 export async function GET() {
   try {
-    // Get the user's session
     const session = await getServerSession(authOptions);
     console.log("Session:", session);
     
@@ -46,23 +45,18 @@ export async function GET() {
       }).all()
     ]);
 
-    console.log("Records fetched:", {
-      igCount: igRecords.length,
-      redditCount: redditRecords.length
-    });
-
-    // Transform the records
+    // Transform the records using the correct field names for each user
     const instagram = igRecords.map(record => ({
       id: record.id,
       ...record.fields,
-      [`Done ${userConfig.name}`]: record.fields[`Done ${userConfig.name}`] || false,
+      [`Done ${userConfig.name}`]: record.fields[userConfig.doneFieldIG] || false,
       [`Upload Content ${userConfig.name}`]: record.fields[`Upload Content ${userConfig.name}`] || ''
     }));
 
     const reddit = redditRecords.map(record => ({
       id: record.id,
       ...record.fields,
-      [`Done ${userConfig.name}`]: record.fields[`Done ${userConfig.name}`] || false,
+      [`Done ${userConfig.name}`]: record.fields[userConfig.doneFieldReddit] || false,
       [`Upload Content ${userConfig.name}`]: record.fields[`Upload Content ${userConfig.name}`] || ''
     }));
 
@@ -101,8 +95,11 @@ export async function PATCH(req: Request) {
     
     const tableId = isInstagram ? process.env.AIRTABLE_IG! : process.env.AIRTABLE_REDDIT_TABLE_ID!;
     
+    // Use the correct field name based on the user and content type
+    const doneField = isInstagram ? userConfig.doneFieldIG : userConfig.doneFieldReddit;
+    
     await base(tableId).update(taskId, {
-      [`Done ${userConfig.name}`]: done
+      [doneField]: done  // Use the dynamic field name
     });
 
     return NextResponse.json({ success: true });

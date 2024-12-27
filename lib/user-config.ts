@@ -2,11 +2,21 @@ export const userConfigs: Record<string, {
   name: string;
   redditViewId: string;
   igViewId: string;
+  doneFieldIG: string;
+  doneFieldReddit: string;
 }> = {
-  "janota.d@gmail.com": {  // Make sure this matches the email you're logging in with
-    name: "Meli",             // This should be the name you want to display
+  "janota.d@gmail.com": {
+    name: "Meli",
     redditViewId: "viwe30kukWSBattHl",
     igViewId: "viw7JbVroNNLqviTl",
+    doneFieldIG: "Done Meli",
+    doneFieldReddit: "Done Meli"
   },
-  // Add other users as needed
+  "paline@example.com": {
+    name: "Paline",
+    redditViewId: "your-reddit-view-id",
+    igViewId: "your-ig-view-id",
+    doneFieldIG: "Done",
+    doneFieldReddit: "Done Paline"
+  }
 }; 
