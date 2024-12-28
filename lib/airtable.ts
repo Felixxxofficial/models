@@ -27,6 +27,7 @@ export interface IGPost {
   notes: string;
   type: 'image' | 'video' | 'story';
   uploaded: boolean;
+  'Cloudinary URL': string;
 }
 
 export interface RedditPost {

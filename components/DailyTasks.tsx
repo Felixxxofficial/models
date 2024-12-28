@@ -149,10 +149,6 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
             
             {/* Badge row with IG Link and Notes */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className="self-start">
-                {type}
-              </Badge>
-              
               {type === "instagram" && getIGLink() && (
                 <Button
                   size="sm"
@@ -243,7 +239,7 @@ export default function DailyTasks() {
   const [showMessage, setShowMessage] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ───────────────────────────────────────���─────────────────────
+  // ────────────────────────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
   // ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -337,7 +333,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Paginate with infinite scroll
-  // ───────────────────────────────────────────────────────────────
+  // ─────────────────────���─────────────────────────────────────────
   const visibleTasks = useMemo(
     () => currentTasks.slice(0, displayedItems),
     [currentTasks, displayedItems]
@@ -410,7 +406,7 @@ export default function DailyTasks() {
     }
   };
 
-  // ────────────────────────────────────────────────────────────
+  // ─────────────────────────────────���──────────────────────────
   // Overall progress
   // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
