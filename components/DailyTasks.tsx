@@ -303,7 +303,7 @@ export default function DailyTasks() {
   const [showMessage, setShowMessage] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ────────────────────���────────────────────────────────────────
+  // ────────���────────────────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
   // ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -333,9 +333,9 @@ export default function DailyTasks() {
     }
   }, [userConfig]);
 
-  // ────────��────────────────────────────────────────────────���───
-  // Counters for the filter buttons
   // ────────────────────────────────────────────────────────────
+  // Counters for the filter buttons
+  // ───��────────────────────────────────────────────────────────
   const counts = useMemo(() => {
     const reelsCount = igTasks.length;
     const imagesCount = redditTasks.filter((t) => t.Media === "Image").length;
@@ -350,7 +350,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Build "to-do" vs "done" sets
-  // ─────────────────────────────────────────��──���───────────────
+  // ────────────────────────────────────────────────────────────
   const todoTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
 
@@ -428,7 +428,7 @@ export default function DailyTasks() {
     };
   }, [currentTasks, displayedItems, isLoadingMore]);
 
-  // ──────��───────────────────────────────────���───────────��─────
+  // ────────────────────────────────────────────────────────────
   // Handle toggling "Done" => moves from To-Do to Done
   // ────────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => {
@@ -459,7 +459,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Overall progress
-  // ─��─────────────────────��───────────────���────────────────────
+  // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
     const all = [...igTasks, ...redditTasks];
     const total = all.length;
@@ -474,7 +474,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Rendering
-  // ─────────────────������─────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -498,31 +498,49 @@ export default function DailyTasks() {
 
   return (
     <div className="py-6 max-w-7xl mx-auto px-4">
-      {/* Progress Section */}
-      <div className="bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg p-6 mb-8 text-white">
-        <h1 className="text-2xl font-bold mb-2">
-          {userConfig?.name ? `${userConfig.name}'s Progress` : "Today's Progress"}
-        </h1>
-        
-        {/* Motivational message based on progress */}
-        <p className="mb-4">
-          {progressStats.remaining === 0 
-            ? "Amazing job! You've completed all tasks! 🎉" 
-            : `${progressStats.remaining} tasks to conquer! You've got this! 💪`
-          }
-        </p>
-
-        <div className="w-full bg-white/20 rounded-full h-2.5 mb-3">
-          <div
-            className="bg-white h-2.5 rounded-full transition-all duration-500"
-            style={{ width: `${progressStats.percentage}%` }}
+      {/* Progress Section with Elite Models branding */}
+      <div className="bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl p-5 mb-8 text-white">
+        {/* Top row with corner logo */}
+        <div className="flex justify-end mb-4">
+          <img 
+            src="/elite.webp" 
+            alt="Elite Models Corner Logo" 
+            className="h-6 sm:h-8 object-contain"
           />
         </div>
 
-        <p className="text-lg">
-          {progressStats.completed} of {progressStats.total} tasks completed
-          {progressStats.percentage >= 50 && " - You're crushing it! 🌟"}
-        </p>
+        {/* Centered content */}
+        <div className="text-center -mt-10">
+          <span className="text-base sm:text-lg block mb-1">You are part of</span>
+          <div className="flex flex-col items-center mb-4">
+            <img 
+              src="/eltemodels.webp" 
+              alt="Elite Models Logo" 
+              className="h-6 sm:h-8 object-contain"
+            />
+          </div>
+
+          {/* Progress info */}
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">
+            {userConfig?.name ? `${userConfig.name}'s Progress` : "Today's Progress"}
+          </h1>
+          
+          <p className="text-base sm:text-lg mb-3">
+            {progressStats.remaining} tasks to conquer! You've got this! 🌟
+          </p>
+
+          {/* Progress bar */}
+          <div className="w-full bg-white/20 rounded-full h-1.5 sm:h-2 mb-2">
+            <div
+              className="bg-white h-1.5 sm:h-2 rounded-full transition-all duration-500"
+              style={{ width: `${progressStats.percentage}%` }}
+            />
+          </div>
+
+          <p className="text-sm sm:text-base">
+            {progressStats.completed} of {progressStats.total} tasks completed
+          </p>
+        </div>
       </div>
 
       {/* Filter by content type */}
@@ -642,3 +660,35 @@ const filterContent = (tasks: IGPost[], filter: ContentType) => {
       return tasks; // 'all' case
   }
 };
+
+function BrandingHeader({ name }: { name: string }) {
+  return (
+    <div className="bg-gradient-to-r from-purple-400 via-pink-500 to-pink-600 rounded-lg p-6 mb-8 shadow-lg">
+      <div className="flex items-center gap-4 mb-4">
+        <span className="text-white text-lg">You are part of</span>
+        <img 
+          src="/em-purple2.webp" 
+          alt="Elite Models Logo" 
+          className="h-8 object-contain"
+        />
+      </div>
+      
+      <h1 className="text-2xl font-bold text-white mb-2">{name}'s Progress</h1>
+      <p className="text-white/90 text-lg">
+        {remainingTasks} tasks to conquer! You've got this! 🌟
+      </p>
+      
+      {/* Progress bar */}
+      <div className="mt-4 bg-white/20 rounded-full h-2 overflow-hidden">
+        <div 
+          className="h-full bg-white rounded-full transition-all duration-500"
+          style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
+        />
+      </div>
+      
+      <p className="text-white/90 mt-2">
+        {completedTasks} of {totalTasks} tasks completed
+      </p>
+    </div>
+  );
+}
