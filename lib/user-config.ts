@@ -18,6 +18,15 @@ const devConfigs: Record<string, UserConfig> = {
     uploadFieldIG: "Upload Content Meli",
     uploadFieldReddit: "Upload Content Meli"
   },
+  "felix.rockwell.official@gmail.com": {
+    name: "Meli",
+    redditViewId: "viwe30kukWSBattHl",
+    igViewId: "viw7JbVroNNLqviTl",
+    doneFieldIG: "Done Meli",
+    doneFieldReddit: "Done Meli",
+    uploadFieldIG: "Upload Content Meli",
+    uploadFieldReddit: "Upload Content Meli"
+  },
   "pragerkar@gmail.com": {
     name: "Palina",
     redditViewId: "viwlEQGwnopB0Hm9Y",
