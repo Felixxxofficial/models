@@ -148,11 +148,12 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
     return null;
   };
 
+  // Only return notes if they exist
   const getNotes = () => {
     if (task.Notes && task.Notes.trim() !== '') {
       return task.Notes;
     }
-    return 'Content Preview';  // Default title if no notes
+    return null;  // Return null if no notes
   };
 
   // Determine if it's a reel
@@ -177,18 +178,18 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
             <ContentDisplay content={task} platform={type} onComplete={onComplete} />
           </div>
 
-          {/* Lightbox only for images */}
+          {/* Lightbox only for images and only with notes */}
           {isImage && (
             <ImageLightbox
               isOpen={isLightboxOpen}
               onClose={() => setIsLightboxOpen(false)}
               images={[{ 
                 src: task['Cloudinary URL'] || '',
-                alt: task.Notes || 'Content Preview'
+                alt: getNotes() || ''
               }]}
-              title={task.Notes || 'Content Preview'}
-              description={task.Notes || 'Content Preview'}
-              dialogTitle={task.Notes || 'Content Preview'}
+              title={getNotes()}
+              description={getNotes()}
+              dialogTitle={getNotes()}
             />
           )}
 
@@ -296,7 +297,7 @@ const motivationalMessages = [
   "Keep up the great work! ⭐"
 ];
 
-// ───────────────────────��─────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // DailyTasks: The main page
 // ─────────────────────────────────────────────────────────────
 export default function DailyTasks() {
@@ -418,7 +419,7 @@ export default function DailyTasks() {
     doneCount: doneTasks.length
   }), [todoTasks, doneTasks]);
 
-  // ���───────────────────────────────────────────────────────────
+  // ���──────────────────────────────────────────────────��────────
   // Counters for the filter buttons
   // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
