@@ -1,4 +1,5 @@
 import Airtable from 'airtable';
+import { useSession } from 'next-auth/react';
 
 interface AirtableAttachment {
   id: string;
@@ -120,44 +121,33 @@ export async function fetchIGPosts(viewId: string): Promise<IGPost[]> {
 export async function updateDoneStatus(
   taskId: string,
   done: boolean,
-  isInstagram: boolean
+  isInstagram: boolean,
+  doneField: string
 ) {
   try {
-    const config = isInstagram ? instagramConfig : redditConfig;
-    
-    console.log('Updating task with config:', {
-      taskId,
-      done,
-      isInstagram,
-      baseId: config.baseId,
-      tableId: config.tableId
+    console.log('Sending update request:', { taskId, done, isInstagram, doneField });
+
+    const response = await fetch('/api/update-done', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId,
+        done,
+        isInstagram,
+        doneField,
+      }),
     });
 
-    const response = await fetch(
-      `${config.endpointUrl}/v0/${config.baseId}/${config.tableId}/${taskId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${config.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          fields: {
-            'Done Meli': done  // Make sure this matches your field name in Airtable
-          }
-        })
-      }
-    );
+    const data = await response.json();
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Update failed:', errorText);
-      throw new Error(`Failed to update status: ${errorText}`);
+      console.error('Update failed:', data);
+      throw new Error(data.error || 'Failed to update status');
     }
 
-    const result = await response.json();
-    console.log('Update successful:', result);
-    return result;
+    return data;
   } catch (error) {
     console.error('Error updating done status:', error);
     throw error;

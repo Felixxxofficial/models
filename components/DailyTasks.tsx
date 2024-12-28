@@ -29,10 +29,11 @@ const ITEMS_PER_PAGE = 9;
 
 // Helpers to distinguish Reddit vs Instagram
 function isRedditPost(task: IGPost | RedditPost): task is RedditPost {
-  return "Media" in task;
+  return task['Cloudinary URL']?.toLowerCase().includes('reddit');
 }
+
 function isIGPost(task: IGPost | RedditPost): task is IGPost {
-  return "Instagram GDrive" in task;
+  return task['Cloudinary URL']?.toLowerCase().includes('reel');
 }
 
 type ContentType = "all" | "reels" | "image" | "video";
@@ -44,26 +45,48 @@ type TabType = "todo" | "done";
 interface TaskCardProps {
   task: IGPost | RedditPost;
   index?: number;
-  onDone: (taskId: string, done: boolean, isInstagram: boolean) => Promise<void>;
+  onDone: (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => Promise<void>;
   type: "instagram" | "reddit";
 }
 function TaskCard({ task, index, onDone, type }: TaskCardProps) {
   const { data: session } = useSession();
   const userConfig = session?.user?.email ? userConfigs[session.user.email] : null;
   
-  const [isDone, setIsDone] = useState(task[`Done ${userConfig?.name}`] || false);
+  // Identify based on Cloudinary URL
+  const isInstagramPost = task['Cloudinary URL']?.toLowerCase().includes('reel');
+  const isRedditPost = task['Cloudinary URL']?.toLowerCase().includes('reddit');
+  
+  // Use the correct done field based on the content type
+  const doneField = isInstagramPost ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
+  const [isDone, setIsDone] = useState(task[doneField || ''] || false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  console.log('TaskCard Debug:', {
+    taskId: task.id,
+    type,
+    isInstagramPost,
+    isRedditPost,
+    doneField,
+    currentDoneValue: task[doneField || '']
+  });
+
   const handleToggle = async (checked: boolean) => {
-    setIsUpdating(true);
     try {
-      await onDone(task.id, checked, type === "instagram");
+      setIsUpdating(true);
+      await onDone(
+        task.id, 
+        checked, 
+        isInstagramPost,
+        doneField || ''
+      );
       setIsDone(checked);
     } catch (error) {
-      console.error("Error toggling done status:", error);
+      console.error('Error toggling task:', error);
+      setIsDone(!checked);
+    } finally {
+      setIsUpdating(false);
     }
-    setIsUpdating(false);
   };
 
   const handleUpload = () => {
@@ -210,11 +233,11 @@ const motivationalMessages = [
   "Awesome progress! ⭐",
   "You're on fire! 🔥",
   "Way to go! 🎯",
-  "Fantastic work! 🌈",
+  "Fantastic work! 🌟",
   "You're unstoppable! 💫",
 ];
 
-// ────────���────────────────────────────────────────────────────
+// ───────────────��─────────────────────────────────────────────
 // DailyTasks: The main page
 // ────────────────────────────────────────────────────────────
 export default function DailyTasks() {
@@ -245,7 +268,7 @@ export default function DailyTasks() {
   const [showMessage, setShowMessage] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ─────────────────────────────────────────────────────────────
+  // ────────────────────���────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
   // ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -275,9 +298,9 @@ export default function DailyTasks() {
     }
   }, [userConfig]);
 
-  // ────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────���───
   // Counters for the filter buttons
-  // ───────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
     const reelsCount = igTasks.length;
     const imagesCount = redditTasks.filter((t) => t.Media === "Image").length;
@@ -310,7 +333,10 @@ export default function DailyTasks() {
     }
 
     // 2) Keep only tasks that are NOT done
-    return filtered.filter((task) => !task[`Done ${userConfig?.name}`]);
+    return filtered.filter((task) => {
+      const doneField = isIGPost(task) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
+      return !task[doneField || ''];
+    });
   }, [igTasks, redditTasks, contentTypeFilter, userConfig]);
 
   const doneTasks = useMemo(() => {
@@ -329,7 +355,10 @@ export default function DailyTasks() {
     }
 
     // Keep only tasks that ARE done
-    return filtered.filter((task) => task[`Done ${userConfig?.name}`]);
+    return filtered.filter((task) => {
+      const doneField = isIGPost(task) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
+      return task[doneField || ''];
+    });
   }, [igTasks, redditTasks, contentTypeFilter, userConfig]);
 
   // Which list is visible (To-Do or Done)?
@@ -364,67 +393,53 @@ export default function DailyTasks() {
     };
   }, [currentTasks, displayedItems, isLoadingMore]);
 
-  // ────────────────────────────────────────────────────────────
+  // ──────��───────────────────────────────────���─────────────────
   // Handle toggling "Done" => moves from To-Do to Done
   // ────────────────────────────────────────────────────────────
-  const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
+  const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => {
     try {
-      const response = await fetch('/api/airtable', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ taskId, done, isInstagram }),
-      });
-
-      // Update local state after successful Airtable update
+      await updateDoneStatus(taskId, done, isInstagram, doneField);
+      
+      // Update local state for both igTasks and redditTasks
       if (isInstagram) {
-        setIgTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, "Done Meli": done } : t))
+        setIgTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id === taskId ? { ...task, [doneField]: done } : task
+          )
         );
       } else {
-        setRedditTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, "Done Meli": done } : t))
+        setRedditTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id === taskId ? { ...task, [doneField]: done } : task
+          )
         );
       }
 
-      if (done) {
-        // Trigger confetti
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-
-        // Show random motivational message
-        const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-        setMessage(randomMessage);
-        setShowMessage(true);
-        setTimeout(() => setShowMessage(false), 3000);
-      }
+      // Show success message
+      console.log(`Task ${done ? 'completed' : 'uncompleted'} successfully`);
     } catch (error) {
-      console.error("Error updating task:", error);
-      setMessage("Failed to update task. Please try again.");
-      setShowMessage(true);
-      setTimeout(() => setShowMessage(false), 2500);
+      console.error("Error updating task status:", error);
     }
   };
 
   // ────────────────────────────────────────────────────────────
   // Overall progress
-  // ────────────────────────────────────────────────────────────
+  // ─��─────────────────────────────────────���────────────────────
   const progressStats = useMemo(() => {
     const all = [...igTasks, ...redditTasks];
     const total = all.length;
-    const completed = all.filter((t) => t["Done Meli"]).length;
+    const completed = all.filter((t) => {
+      const doneField = isIGPost(t) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
+      return t[doneField || ''];
+    }).length;
     const remaining = total - completed;
     const percentage = total > 0 ? (completed / total) * 100 : 0;
     return { total, completed, remaining, percentage };
-  }, [igTasks, redditTasks]);
+  }, [igTasks, redditTasks, userConfig]);
 
-  // ───────��────────────────────────────────────────────────────
-  // Rendering
   // ────────────────────────────────────────────────────────────
+  // Rendering
+  // ──────────────────���─────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -526,14 +541,13 @@ export default function DailyTasks() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <AnimatePresence>
           {visibleTasks.map((task, index) => {
-            const taskType = isIGPost(task) ? "instagram" : "reddit";
             return (
               <TaskCard
                 key={task.id}
                 task={task}
                 index={index}
                 onDone={handleTaskDone}
-                type={taskType}
+                type={isIGPost(task) ? "instagram" : "reddit"}
               />
             );
           })}
