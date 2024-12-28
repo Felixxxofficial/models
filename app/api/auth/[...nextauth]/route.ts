@@ -1,8 +1,9 @@
 import NextAuth from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import { userConfigs } from "@/lib/user-config"
+import { AuthOptions } from "next-auth"
 
-const handler = NextAuth({
+export const authOptions: AuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -27,6 +28,7 @@ const handler = NextAuth({
     strategy: "jwt",
     maxAge: 365 * 24 * 60 * 60, // 1 year in seconds
   },
-})
+}
 
+const handler = NextAuth(authOptions)
 export { handler as GET, handler as POST } 
