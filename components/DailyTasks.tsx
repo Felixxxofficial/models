@@ -28,12 +28,12 @@ const ITEMS_PER_PAGE = 9;
 
 // Helpers to distinguish Reddit vs Instagram
 function isRedditPost(task: IGPost | RedditPost): task is RedditPost {
-  const url = task['Cloudinary URL']?.toLowerCase() || '';
+  const url = task['Cloudfront URL']?.toLowerCase() || '';
   return url.includes('reddit');
 }
 
 function isIGPost(task: IGPost | RedditPost): task is IGPost {
-  const url = task['Cloudinary URL']?.toLowerCase() || '';
+  const url = task['Cloudfront URL']?.toLowerCase() || '';
   return url.includes('reel');
 }
 
@@ -54,8 +54,8 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
   const { data: session } = useSession();
   const userConfig = session?.user?.email ? userConfigs[session.user.email] : null;
   
-  const isInstagramPost = task['Cloudinary URL']?.toLowerCase().includes('reel');
-  const isRedditPost = task['Cloudinary URL']?.toLowerCase().includes('reddit');
+  const isInstagramPost = task['Cloudfront URL']?.toLowerCase().includes('reel');
+  const isRedditPost = task['Cloudfront URL']?.toLowerCase().includes('reddit');
   const isImage = task.Media === "Image";
   
   // Add state for lightbox
@@ -157,7 +157,7 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
   };
 
   // Determine if it's a reel
-  const isReel = task['Cloudinary URL']?.toLowerCase().includes('reel');
+  const isReel = task['Cloudfront URL']?.toLowerCase().includes('reel');
 
   // Set platform type - if it's a reel, it should be instagram
   const platformType = isReel ? "instagram" : type;
@@ -184,7 +184,7 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
               isOpen={isLightboxOpen}
               onClose={() => setIsLightboxOpen(false)}
               images={[{ 
-                src: task['Cloudinary URL'] || '',
+                src: task['Cloudfront URL'] || '',
                 alt: getNotes() || ''
               }]}
               title={getNotes()}
@@ -299,7 +299,7 @@ const motivationalMessages = [
 
 // ─────────────────────────────────────────────────────────────
 // DailyTasks: The main page
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────��───────
 export default function DailyTasks() {
   const { data: session } = useSession();
   const userEmail = session?.user?.email;
@@ -352,7 +352,7 @@ export default function DailyTasks() {
     fetchData();
   }, [userConfig]);
 
-  // ────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────���───
   // Build "to-do" vs "done" sets
   // ────────────────────────────────────────────────────────────
   const todoTasks = useMemo(() => {
@@ -364,7 +364,7 @@ export default function DailyTasks() {
       filtered = [...igTasks, ...redditTasks];
     } else if (contentType === "reels") {
       filtered = igTasks.filter(task => 
-        task['Cloudinary URL']?.toLowerCase().includes('reel')
+        task['Cloudfront URL']?.toLowerCase().includes('reel')
       );
     } else if (contentType === "image") {
       filtered = redditTasks.filter((t) => t.Media === "Image");
@@ -389,7 +389,7 @@ export default function DailyTasks() {
       filtered = [...igTasks, ...redditTasks];
     } else if (contentType === "reels") {
       filtered = igTasks.filter(task => 
-        task['Cloudinary URL']?.toLowerCase().includes('reel')
+        task['Cloudfront URL']?.toLowerCase().includes('reel')
       );
     } else if (contentType === "image") {
       filtered = redditTasks.filter((t) => t.Media === "Image");
@@ -407,7 +407,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Current tasks and stats
-  // ────────────────────────────────────────────────────────────
+  // ─────────────────���──────────────────────────────────────────
   const currentTasks = useMemo(() => {
     const tasks = activeTab === "todo" ? todoTasks : doneTasks;
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -419,7 +419,7 @@ export default function DailyTasks() {
     doneCount: doneTasks.length
   }), [todoTasks, doneTasks]);
 
-  // ���──────────────────────────────────────────────────��────────
+  // ���────────────────────────────────────��─────────────��────────
   // Counters for the filter buttons
   // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
@@ -641,12 +641,12 @@ const filterContent = (tasks: IGPost[], filter: ContentType) => {
   switch (filter) {
     case 'reels':
       return tasks.filter(task => 
-        task['Cloudinary URL']?.toLowerCase().includes('reel')
+        task['Cloudfront URL']?.toLowerCase().includes('reel')
       );
     
     case 'image':
       return tasks.filter(task => {
-        const url = task['Cloudinary URL']?.toLowerCase();
+        const url = task['Cloudfront URL']?.toLowerCase();
         return url && (
           url.endsWith('.jpg') || 
           url.endsWith('.jpeg') || 
@@ -657,7 +657,7 @@ const filterContent = (tasks: IGPost[], filter: ContentType) => {
     
     case 'video':
       return tasks.filter(task => {
-        const url = task['Cloudinary URL']?.toLowerCase();
+        const url = task['Cloudfront URL']?.toLowerCase();
         return url && (
           (url.endsWith('.mp4') || 
            url.endsWith('.mov') || 

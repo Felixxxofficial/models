@@ -16,11 +16,11 @@ export default function ContentDisplay({ content, platform, onComplete, userConf
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const getMediaUrl = () => {
-    if (!content['Cloudinary URL']) {
-      console.error('No Cloudinary URL available for content:', content.id);
+    if (!content['Cloudfront URL']) {
+      console.error('No Cloudfront URL available for content:', content.id);
       return '';
     }
-    return content['Cloudinary URL'];
+    return content['Cloudfront URL'];
   };
 
   const handlePlayClick = () => {
@@ -31,7 +31,7 @@ export default function ContentDisplay({ content, platform, onComplete, userConf
   };
 
   const isVideo = () => {
-    const url = content['Cloudinary URL']?.toLowerCase();
+    const url = content['Cloudfront URL']?.toLowerCase();
     if (!url) return false;
     
     return url.endsWith('.mp4') || 

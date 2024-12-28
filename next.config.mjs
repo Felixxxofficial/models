@@ -58,6 +58,12 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
         pathname: '/**',
+      },
+      // Add CloudFront domain
+      {
+        protocol: 'https',
+        hostname: 'd24kk8lne8yzfc.cloudfront.net',
+        pathname: '/**',
       }
     ]
   },
