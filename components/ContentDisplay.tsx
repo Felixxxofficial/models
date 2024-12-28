@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
-import { IGPost } from '@/lib/airtable';
+import { IGPost, RedditPost } from '@/lib/airtable';
 
 interface ContentDisplayProps {
-  content: IGPost;
+  content: IGPost | RedditPost;
+  platform: "instagram" | "reddit";
 }
 
-export default function ContentDisplay({ content }: ContentDisplayProps) {
+export default function ContentDisplay({ content, platform }: ContentDisplayProps) {
   const [isError, setIsError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -28,11 +29,19 @@ export default function ContentDisplay({ content }: ContentDisplayProps) {
     }
   };
 
-  const isVideo = content.type === 'video' || content['Cloudinary URL'];
+  const isVideo = () => {
+    const url = content['Cloudinary URL']?.toLowerCase();
+    if (!url) return content.type === 'video';
+    
+    return url.endsWith('.mp4') || 
+           url.endsWith('.mov') || 
+           url.endsWith('.webm') || 
+           url.includes('reel');
+  };
 
   return (
     <div className="relative w-full h-full">
-      {isVideo ? (
+      {isVideo() ? (
         <div className="relative w-full h-full">
           <video
             ref={videoRef}
@@ -75,7 +84,7 @@ export default function ContentDisplay({ content }: ContentDisplayProps) {
       )}
       {isError && <div className="text-red-500">Error loading media</div>}
       <div className="absolute top-2 right-2 px-2 py-1 bg-black/50 text-white rounded">
-        instagram
+        {platform}
       </div>
     </div>
   );

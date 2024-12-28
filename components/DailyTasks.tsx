@@ -91,6 +91,12 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
     return null;
   };
 
+  // Determine if it's a reel
+  const isReel = task['Cloudinary URL']?.toLowerCase().includes('reel');
+
+  // Set platform type - if it's a reel, it should be instagram
+  const platformType = isReel ? "instagram" : type;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -99,7 +105,7 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
     >
       <Card className="overflow-hidden">
         <CardContent className="p-2">
-          <ContentDisplay content={task} type={type} />
+          <ContentDisplay content={task} platform={platformType} />
 
           <div className="mt-2 space-y-2">
             {/* Upload and Toggle row */}
@@ -208,7 +214,7 @@ const motivationalMessages = [
   "You're unstoppable! 💫",
 ];
 
-// ────────────────────────────────────────────────────────────
+// ────────���────────────────────────────────────────────────────
 // DailyTasks: The main page
 // ────────────────────────────────────────────────────────────
 export default function DailyTasks() {
@@ -239,9 +245,9 @@ export default function DailyTasks() {
   const [showMessage, setShowMessage] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
-  // ───────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -269,7 +275,7 @@ export default function DailyTasks() {
     }
   }, [userConfig]);
 
-  // ───────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Counters for the filter buttons
   // ───────────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
@@ -294,14 +300,13 @@ export default function DailyTasks() {
     if (contentTypeFilter === "all") {
       filtered = [...igTasks, ...redditTasks];
     } else if (contentTypeFilter === "reels") {
-      filtered = igTasks; // all IG tasks
+      filtered = igTasks.filter(task => 
+        task['Cloudinary URL']?.toLowerCase().includes('reel')
+      );
     } else if (contentTypeFilter === "image") {
       filtered = redditTasks.filter((t) => t.Media === "Image");
     } else if (contentTypeFilter === "video") {
-      filtered = [
-        ...redditTasks.filter((t) => t.Media === "Gif/Video"),
-        ...igTasks,
-      ];
+      filtered = redditTasks.filter((t) => t.Media === "Gif/Video");
     }
 
     // 2) Keep only tasks that are NOT done
@@ -314,14 +319,13 @@ export default function DailyTasks() {
     if (contentTypeFilter === "all") {
       filtered = [...igTasks, ...redditTasks];
     } else if (contentTypeFilter === "reels") {
-      filtered = igTasks;
+      filtered = igTasks.filter(task => 
+        task['Cloudinary URL']?.toLowerCase().includes('reel')
+      );
     } else if (contentTypeFilter === "image") {
       filtered = redditTasks.filter((t) => t.Media === "Image");
     } else if (contentTypeFilter === "video") {
-      filtered = [
-        ...redditTasks.filter((t) => t.Media === "Gif/Video"),
-        ...igTasks,
-      ];
+      filtered = redditTasks.filter((t) => t.Media === "Gif/Video");
     }
 
     // Keep only tasks that ARE done
@@ -333,7 +337,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Paginate with infinite scroll
-  // ─────────────────────���─────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const visibleTasks = useMemo(
     () => currentTasks.slice(0, displayedItems),
     [currentTasks, displayedItems]
@@ -406,7 +410,7 @@ export default function DailyTasks() {
     }
   };
 
-  // ─────────────────────────────────���──────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Overall progress
   // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
@@ -418,7 +422,7 @@ export default function DailyTasks() {
     return { total, completed, remaining, percentage };
   }, [igTasks, redditTasks]);
 
-  // ────────────────────────────────────────────────────────────
+  // ───────��────────────────────────────────────────────────────
   // Rendering
   // ────────────────────────────────────────────────────────────
   if (isLoading) {
@@ -555,3 +559,37 @@ export default function DailyTasks() {
     </div>
   );
 }
+
+const filterContent = (tasks: IGPost[], filter: ContentType) => {
+  switch (filter) {
+    case 'reels':
+      return tasks.filter(task => 
+        task['Cloudinary URL']?.toLowerCase().includes('reel')
+      );
+    
+    case 'image':
+      return tasks.filter(task => {
+        const url = task['Cloudinary URL']?.toLowerCase();
+        return url && (
+          url.endsWith('.jpg') || 
+          url.endsWith('.jpeg') || 
+          url.endsWith('.png') || 
+          url.endsWith('.gif')
+        );
+      });
+    
+    case 'video':
+      return tasks.filter(task => {
+        const url = task['Cloudinary URL']?.toLowerCase();
+        return url && (
+          (url.endsWith('.mp4') || 
+           url.endsWith('.mov') || 
+           url.endsWith('.webm')) && 
+          !url.includes('reel')
+        );
+      });
+    
+    default:
+      return tasks; // 'all' case
+  }
+};
