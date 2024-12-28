@@ -15,13 +15,11 @@ export default function ContentDisplay({ content, platform, onComplete }: Conten
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const getMediaUrl = () => {
-    if (content['Cloudinary URL']) {
-      return content['Cloudinary URL'];
+    if (!content['Cloudinary URL']) {
+      console.error('No Cloudinary URL available for content:', content.id);
+      return '';
     }
-    if (content.type === 'video') {
-      return content['Instagram GDrive'];
-    }
-    return content.Thumbnail?.[0]?.url || '';
+    return content['Cloudinary URL'];
   };
 
   const handlePlayClick = () => {
@@ -33,7 +31,7 @@ export default function ContentDisplay({ content, platform, onComplete }: Conten
 
   const isVideo = () => {
     const url = content['Cloudinary URL']?.toLowerCase();
-    if (!url) return content.type === 'video';
+    if (!url) return false;
     
     return url.endsWith('.mp4') || 
            url.endsWith('.mov') || 

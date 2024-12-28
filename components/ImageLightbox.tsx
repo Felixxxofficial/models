@@ -18,7 +18,6 @@ export function ImageLightbox({
   description,
   dialogTitle 
 }: ImageLightboxProps) {
-  // Use the first image if multiple are provided
   const currentImage = images[0];
 
   return (

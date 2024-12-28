@@ -97,10 +97,7 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
     const uploadUrl = task[`Upload Content ${userConfig?.name}`];
     
     if (!uploadUrl) {
-      console.error('Upload failed: No URL available', {
-        taskId: task.id,
-        userName: userConfig?.name
-      });
+      console.error('No upload URL available for this content');
       return;
     }
     
@@ -344,9 +341,9 @@ export default function DailyTasks() {
     };
   }, [igTasks, redditTasks]);
 
-  // ────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────��─────
   // Build "to-do" vs "done" sets
-  // ��───────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const todoTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
 
@@ -424,7 +421,7 @@ export default function DailyTasks() {
     };
   }, [currentTasks, displayedItems, isLoadingMore]);
 
-  // ──────────────────────���─────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Handle toggling "Done" => moves from To-Do to Done
   // ────────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => {
@@ -453,7 +450,7 @@ export default function DailyTasks() {
     }
   };
 
-  // ───────────────────────────────────────────────────��────────
+  // ────────────────────────────────────────────────────────────
   // Overall progress
   // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
@@ -681,7 +678,7 @@ const filterContent = (tasks: IGPost[], filter: ContentType) => {
       });
     
     default:
-      return tasks; // 'all' case
+      return tasks;
   }
 };
 
