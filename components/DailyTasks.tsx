@@ -56,6 +56,15 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
   const isInstagramPost = task['Cloudinary URL']?.toLowerCase().includes('reel');
   const isRedditPost = task['Cloudinary URL']?.toLowerCase().includes('reddit');
   
+  // Add state for lightbox
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  
+  // Debug log when opening lightbox
+  const handleOpenLightbox = () => {
+    console.log('Opening lightbox with URL:', task['Cloudinary URL']);
+    setIsLightboxOpen(true);
+  };
+  
   // Use the correct done field based on the content type
   const doneField = isInstagramPost ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
   const [isDone, setIsDone] = useState(task[doneField || ''] || false);
@@ -111,7 +120,7 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
     if (task.Notes && task.Notes.trim() !== '') {
       return task.Notes;
     }
-    return null;
+    return 'Content Preview';  // Default title if no notes
   };
 
   // Determine if it's a reel
@@ -128,7 +137,26 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
     >
       <Card className="overflow-hidden">
         <CardContent className="p-2">
-          <ContentDisplay content={task} platform={platformType} />
+          {/* Make the content clickable to open lightbox */}
+          <div 
+            onClick={handleOpenLightbox} 
+            className="cursor-pointer"
+          >
+            <ContentDisplay content={task} platform={platformType} />
+          </div>
+
+          {/* Add the ImageLightbox component with DialogTitle */}
+          <ImageLightbox
+            isOpen={isLightboxOpen}
+            onClose={() => setIsLightboxOpen(false)}
+            images={[{ 
+              src: task['Cloudinary URL'] || '',
+              alt: getNotes()
+            }]}
+            title={getNotes()}
+            description={getNotes()}
+            dialogTitle={getNotes()}
+          />
 
           <div className="mt-2 space-y-2">
             {/* Upload and Toggle row */}
@@ -237,7 +265,7 @@ const motivationalMessages = [
   "You're unstoppable! 💫",
 ];
 
-// ───────────────��─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // DailyTasks: The main page
 // ────────────────────────────────────────────────────────────
 export default function DailyTasks() {
@@ -258,9 +286,16 @@ export default function DailyTasks() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Make sure "todo" is the default tab
   const [contentTypeFilter, setContentTypeFilter] = useState<ContentType>("all");
-  const [activeTab, setActiveTab] = useState<TabType>("todo");
+  const [activeTab, setActiveTab] = useState<TabType>("todo");  // This should be "todo" by default
   const [displayedItems, setDisplayedItems] = useState(ITEMS_PER_PAGE);
+  
+  // Reset to first page when changing tabs
+  useEffect(() => {
+    setDisplayedItems(ITEMS_PER_PAGE);
+  }, [activeTab, contentTypeFilter]);
+
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
@@ -298,7 +333,7 @@ export default function DailyTasks() {
     }
   }, [userConfig]);
 
-  // ─────────────────────────────────────────────────────────���───
+  // ────────��────────────────────────────────────────────────���───
   // Counters for the filter buttons
   // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
@@ -315,7 +350,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Build "to-do" vs "done" sets
-  // ────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────��──���───────────────
   const todoTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
 
@@ -393,7 +428,7 @@ export default function DailyTasks() {
     };
   }, [currentTasks, displayedItems, isLoadingMore]);
 
-  // ──────��───────────────────────────────────���─────────────────
+  // ──────��───────────────────────────────────���───────────��─────
   // Handle toggling "Done" => moves from To-Do to Done
   // ────────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => {
@@ -424,7 +459,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Overall progress
-  // ─��─────────────────────────────────────���────────────────────
+  // ─��─────────────────────��───────────────���────────────────────
   const progressStats = useMemo(() => {
     const all = [...igTasks, ...redditTasks];
     const total = all.length;
@@ -439,7 +474,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Rendering
-  // ──────────────────���─────────────────────────────────────────
+  // ─────────────────������─────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
