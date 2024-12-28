@@ -24,7 +24,7 @@ export const userConfigs: Record<string, UserConfig> = {
     igViewId: "viwa3aWC8CXJxfuaa",
     doneFieldIG: "Done",
     doneFieldReddit: "Done Paline",
-    uploadFieldIG: "Upload Content Paline",
-    uploadFieldReddit: "Upload Content Paline"
+    uploadFieldIG: "Upload Content",
+    uploadFieldReddit: "Upload Content Palina"
   }
 }; 
