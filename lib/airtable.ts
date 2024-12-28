@@ -84,22 +84,12 @@ function getAirtableBase() {
   }
 
   try {
-    // Configure with explicit authentication
-    const config = {
+    Airtable.configure({
       apiKey: apiKey,
       endpointUrl: 'https://api.airtable.com',
-    };
-
-    Airtable.configure(config);
-    
-    // Log configuration (but mask the API key)
-    console.log('Airtable Config:', {
-      ...config,
-      apiKey: apiKey ? `${apiKey.slice(0, 5)}...` : 'missing',
-      baseId: baseId
     });
-
-    airtableBase = new Airtable(config).base(baseId);
+    
+    airtableBase = new Airtable().base(baseId);
     return airtableBase;
   } catch (error) {
     console.error('Error initializing Airtable:', error);
@@ -110,10 +100,15 @@ function getAirtableBase() {
 export async function fetchIGPosts(viewId: string): Promise<IGPost[]> {
   try {
     const response = await fetch(`/api/instagram?viewId=${viewId}`);
-    if (!response.ok) throw new Error('Failed to fetch IG posts');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch IG posts: ${response.statusText}`);
+    }
     return await response.json();
   } catch (error) {
-    console.error('Error fetching IG posts:', error);
+    console.error('Instagram fetch failed:', {
+      viewId,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
     throw error;
   }
 }
@@ -125,8 +120,6 @@ export async function updateDoneStatus(
   doneField: string
 ) {
   try {
-    console.log('Sending update request:', { taskId, done, isInstagram, doneField });
-
     const response = await fetch('/api/update-done', {
       method: 'POST',
       headers: {

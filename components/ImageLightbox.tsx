@@ -36,16 +36,17 @@ export function ImageLightbox({
             <img
               src={currentImage.src}
               alt={currentImage.alt || title || 'Image'}
-              className="w-auto max-w-[140vw] h-auto max-h-[140vh] cursor-zoom-out rounded-md object-contain"
+              className="w-auto max-w-[140vw] h-auto max-h-[140vh] cursor-zoom-out rounded-md"
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
               }}
               style={{
-                touchAction: 'pan-x pan-y', // Enable touch panning in both directions
-                transform: 'scale(1.4)', // Initial zoom level
+                touchAction: 'pan-x pan-y',
+                transform: 'scale(1.4)',
                 transformOrigin: 'center center',
               }}
+              onError={(e) => console.error('Image failed to load:', currentImage.src)}
             />
           </div>
         </div>

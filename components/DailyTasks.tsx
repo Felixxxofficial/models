@@ -62,7 +62,6 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
   
   // Debug log when opening lightbox
   const handleOpenLightbox = () => {
-    console.log('Opening lightbox with URL:', task['Cloudinary URL']);
     setIsLightboxOpen(true);
   };
   
@@ -72,27 +71,12 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  console.log('TaskCard Debug:', {
-    taskId: task.id,
-    type,
-    isInstagramPost,
-    isRedditPost,
-    doneField,
-    currentDoneValue: task[doneField || '']
-  });
-
   const handleToggle = async (checked: boolean) => {
     try {
       setIsUpdating(true);
-      await onDone(
-        task.id, 
-        checked, 
-        isInstagramPost,
-        doneField || ''
-      );
+      await onDone(task.id, checked, isInstagramPost, doneField || '');
       setIsDone(checked);
       
-      // Trigger confetti and callback when marking as done
       if (checked) {
         confetti({
           particleCount: 100,
@@ -112,12 +96,15 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
   const handleUpload = () => {
     const uploadUrl = task[`Upload Content ${userConfig?.name}`];
     
-    if (uploadUrl) {
-      window.open(uploadUrl, '_blank');
-    } else {
-      console.error('No upload URL available for this content');
-      // Optionally show an error message to the user
+    if (!uploadUrl) {
+      console.error('Upload failed: No URL available', {
+        taskId: task.id,
+        userName: userConfig?.name
+      });
+      return;
     }
+    
+    window.open(uploadUrl, '_blank');
   };
 
   const getIGLink = () => {
@@ -359,7 +346,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Build "to-do" vs "done" sets
-  // ────────────────────────────────────────────────────────────
+  // ��───────────────────────────────────────────────────────────
   const todoTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
 
@@ -437,7 +424,7 @@ export default function DailyTasks() {
     };
   }, [currentTasks, displayedItems, isLoadingMore]);
 
-  // ───────────────────────────────────────────���────────────────
+  // ──────────────────────���─────────────────────────────────────
   // Handle toggling "Done" => moves from To-Do to Done
   // ────────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => {
@@ -466,9 +453,9 @@ export default function DailyTasks() {
     }
   };
 
-  // ────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────��────────
   // Overall progress
-  // ──��─────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
     const all = [...igTasks, ...redditTasks];
     const total = all.length;

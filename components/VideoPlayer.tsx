@@ -30,7 +30,6 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
     if (!isPlaying) {
       try {
         const embedUrl = src.includes('uc?export=view') ? getGoogleApiUrl(src) : src
-        console.log('Setting video URL to:', embedUrl)
         setVideoUrl(embedUrl)
         setIsPlaying(true)
         
@@ -89,7 +88,7 @@ export default function VideoPlayer({ src, thumbnail }: VideoPlayerProps) {
             className="absolute inset-0 w-full h-full rounded-lg"
             controls
             playsInline
-            muted // Start muted to allow autoplay
+            muted
             onError={(e) => console.error('Video failed to load:', videoUrl)}
           />
         </div>
