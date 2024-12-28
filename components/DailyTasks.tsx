@@ -327,7 +327,7 @@ export default function DailyTasks() {
 
   // ──────────────���─────────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
-  // ────────────────────────────────────────────────────────────
+  // ─────────────��──────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       if (!userConfig) return;
@@ -354,7 +354,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────���───
   // Build "to-do" vs "done" sets
-  // ────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────���────
   const todoTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
     if (!userConfig) return filtered;
@@ -500,6 +500,10 @@ export default function DailyTasks() {
       </div>
     );
   }
+
+  console.log('Current user email:', session?.user?.email);
+  console.log('Available configs:', Object.keys(userConfigs));
+  console.log('User config:', userConfigs[session?.user?.email ?? '']);
 
   return (
     <div className="py-6 max-w-7xl mx-auto px-4">
