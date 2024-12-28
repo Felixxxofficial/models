@@ -1,13 +1,15 @@
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { IGPost, RedditPost } from '@/lib/airtable';
+import confetti from 'canvas-confetti';
 
 interface ContentDisplayProps {
   content: IGPost | RedditPost;
   platform: "instagram" | "reddit";
+  onComplete?: () => void;
 }
 
-export default function ContentDisplay({ content, platform }: ContentDisplayProps) {
+export default function ContentDisplay({ content, platform, onComplete }: ContentDisplayProps) {
   const [isError, setIsError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -37,6 +39,34 @@ export default function ContentDisplay({ content, platform }: ContentDisplayProp
            url.endsWith('.mov') || 
            url.endsWith('.webm') || 
            url.includes('reel');
+  };
+
+  const handleToggle = async (checked: boolean) => {
+    try {
+      setIsUpdating(true);
+      await onDone(
+        task.id, 
+        checked, 
+        isInstagramPost,
+        doneField || ''
+      );
+      setIsDone(checked);
+      
+      // Trigger confetti and callback when marking as done
+      if (checked) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        onComplete?.();
+      }
+    } catch (error) {
+      console.error('Error toggling task:', error);
+      setIsDone(!checked);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (

@@ -46,9 +46,10 @@ interface TaskCardProps {
   task: IGPost | RedditPost;
   index?: number;
   onDone: (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => Promise<void>;
+  onComplete: () => void;
   type: "instagram" | "reddit";
 }
-function TaskCard({ task, index, onDone, type }: TaskCardProps) {
+function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
   const { data: session } = useSession();
   const userConfig = session?.user?.email ? userConfigs[session.user.email] : null;
   
@@ -90,6 +91,16 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
         doneField || ''
       );
       setIsDone(checked);
+      
+      // Trigger confetti and callback when marking as done
+      if (checked) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        onComplete?.();
+      }
     } catch (error) {
       console.error('Error toggling task:', error);
       setIsDone(!checked);
@@ -142,7 +153,7 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
             onClick={handleOpenLightbox} 
             className="cursor-pointer"
           >
-            <ContentDisplay content={task} platform={platformType} />
+            <ContentDisplay content={task} platform={platformType} onComplete={onComplete} />
           </div>
 
           {/* Add the ImageLightbox component with DialogTitle */}
@@ -255,14 +266,11 @@ function TaskCard({ task, index, onDone, type }: TaskCardProps) {
 
 // Add these motivational messages
 const motivationalMessages = [
-  "Great job! 🌟",
+  "Amazing work! Keep going! 🌟",
   "You're crushing it! 💪",
-  "Keep up the amazing work! 🚀",
-  "Awesome progress! ⭐",
+  "Fantastic progress! 🎉",
   "You're on fire! 🔥",
-  "Way to go! 🎯",
-  "Fantastic work! 🌟",
-  "You're unstoppable! 💫",
+  "Keep up the great work! ⭐"
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -300,10 +308,11 @@ export default function DailyTasks() {
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
   // For success message
+  const [showConfetti, setShowConfetti] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
 
-  // ────────���────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
   // ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -335,7 +344,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Counters for the filter buttons
-  // ───��────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
     const reelsCount = igTasks.length;
     const imagesCount = redditTasks.filter((t) => t.Media === "Image").length;
@@ -428,7 +437,7 @@ export default function DailyTasks() {
     };
   }, [currentTasks, displayedItems, isLoadingMore]);
 
-  // ────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────���────────────────
   // Handle toggling "Done" => moves from To-Do to Done
   // ────────────────────────────────────────────────────────────
   const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => {
@@ -459,7 +468,7 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Overall progress
-  // ────────────────────────────────────────────────────────────
+  // ──��─────────────────────────────────────────────────────────
   const progressStats = useMemo(() => {
     const all = [...igTasks, ...redditTasks];
     const total = all.length;
@@ -471,6 +480,25 @@ export default function DailyTasks() {
     const percentage = total > 0 ? (completed / total) * 100 : 0;
     return { total, completed, remaining, percentage };
   }, [igTasks, redditTasks, userConfig]);
+
+  const handleTaskComplete = () => {
+    // Show confetti
+    setShowConfetti(true);
+    
+    // Show random motivational message
+    const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+    setMessage(randomMessage);
+    setShowMessage(true);
+    
+    // Hide confetti and message after delay
+    setTimeout(() => {
+      setShowConfetti(false);
+    }, 5000);
+    
+    setTimeout(() => {
+      setShowMessage(false);
+    }, 3000);
+  };
 
   // ────────────────────────────────────────────────────────────
   // Rendering
@@ -593,23 +621,32 @@ export default function DailyTasks() {
       {/* Task Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <AnimatePresence>
-          {visibleTasks.map((task, index) => {
-            return (
-              <TaskCard
-                key={task.id}
-                task={task}
-                index={index}
-                onDone={handleTaskDone}
-                type={isIGPost(task) ? "instagram" : "reddit"}
-              />
-            );
-          })}
+          {visibleTasks.map((task, index) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              index={index}
+              onDone={handleTaskDone}
+              onComplete={handleTaskComplete}
+              type={isIGPost(task) ? "instagram" : "reddit"}
+            />
+          ))}
         </AnimatePresence>
       </div>
 
       {/* Infinite scroll marker */}
       {currentTasks.length > displayedItems && (
         <div ref={observerTarget} className="h-12" />
+      )}
+
+      {/* Confetti */}
+      {showConfetti && (
+        <ReactConfetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={200}
+        />
       )}
 
       {/* Success toast */}
