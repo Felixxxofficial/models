@@ -350,9 +350,10 @@ export default function DailyTasks() {
 
   // ────────────────────────────────────────────────────────────
   // Build "to-do" vs "done" sets
-  // ────────────────────────────────────────────────��───────────
+  // ────────────────────────────────────────────────────────────
   const todoTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
+    if (!userConfig) return filtered;
 
     // 1) Filter by content type
     if (contentType === "all") {
@@ -369,14 +370,15 @@ export default function DailyTasks() {
 
     // 2) Keep only tasks that are NOT done
     return filtered.filter((task) => {
-      const doneField = isIGPost(task) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
-      const isDone = task[doneField || ''];
+      const doneField = isIGPost(task) ? userConfig.doneFieldIG : userConfig.doneFieldReddit;
+      const isDone = task[doneField];
       return !isDone;
     });
   }, [igTasks, redditTasks, contentType, userConfig]);
 
   const doneTasks = useMemo(() => {
     let filtered: (IGPost | RedditPost)[] = [];
+    if (!userConfig) return filtered;
     
     // 1) Filter by content type
     if (contentType === "all") {
@@ -393,8 +395,8 @@ export default function DailyTasks() {
 
     // 2) Keep only tasks that ARE done
     return filtered.filter((task) => {
-      const doneField = isIGPost(task) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
-      const isDone = task[doneField || ''];
+      const doneField = isIGPost(task) ? userConfig.doneFieldIG : userConfig.doneFieldReddit;
+      const isDone = task[doneField];
       return isDone;
     });
   }, [igTasks, redditTasks, contentType, userConfig]);
@@ -413,7 +415,7 @@ export default function DailyTasks() {
     doneCount: doneTasks.length
   }), [todoTasks, doneTasks]);
 
-  // ─────────────��──────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
   // Counters for the filter buttons
   // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
@@ -494,12 +496,6 @@ export default function DailyTasks() {
       </div>
     );
   }
-
-  console.log('Rendering DailyTasks with:', {
-    userName: userConfig?.name,
-    todoCount: todoTasks.length,
-    doneCount: doneTasks.length
-  });
 
   return (
     <div className="py-6 max-w-7xl mx-auto px-4">
