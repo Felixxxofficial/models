@@ -20,15 +20,13 @@ export interface IGPost {
   caption: string;
   status: string;
   deadline: string;
-  'Instagram GDrive': string;
-  'Upload Content Meli': string;
-  'Done Meli': boolean;
+  'Cloudinary URL': string;
   Thumbnail: AirtableAttachment[];
   isUrgent: boolean;
   notes: string;
   type: 'image' | 'video' | 'story';
   uploaded: boolean;
-  'Cloudinary URL': string;
+  [key: string]: any;
 }
 
 export interface RedditPost {
@@ -42,30 +40,12 @@ export interface RedditPost {
     filename: string;
     type: string;
   }[];
-  'URL Gdrive'?: string;
-  'Done Meli'?: boolean;
+  'Cloudinary URL': string;
+  [key: string]: any;
 }
 
 const DEFAULT_VIEW = 'Grid view';
 let airtableBase: any = null;
-
-// Add separate config for Instagram
-const instagramConfig = {
-  apiKey: process.env.AIRTABLE_API_KEY!,
-  baseId: process.env.AIRTABLE_BASE_ID!,
-  tableId: process.env.AIRTABLE_IG!,
-  viewId: process.env.AIRTABLE_VIEW_MELI!,
-  endpointUrl: 'https://api.airtable.com'
-};
-
-// Add separate config for Reddit
-const redditConfig = {
-  apiKey: process.env.AIRTABLE_API_KEY!,
-  baseId: process.env.AIRTABLE_REDDIT_BASE_ID!,
-  tableId: process.env.AIRTABLE_REDDIT_TABLE_ID!,
-  viewId: process.env.AIRTABLE_REDDIT_VIEW_ID!,
-  endpointUrl: 'https://api.airtable.com'
-};
 
 function getAirtableBase() {
   if (airtableBase) return airtableBase;
@@ -99,15 +79,29 @@ function getAirtableBase() {
 
 export async function fetchIGPosts(viewId: string): Promise<IGPost[]> {
   try {
+    console.log('Fetching IG posts with viewId:', viewId);
     const response = await fetch(`/api/instagram?viewId=${viewId}`);
+    
     if (!response.ok) {
+      console.error('IG API response not OK:', {
+        status: response.status,
+        statusText: response.statusText
+      });
       throw new Error(`Failed to fetch IG posts: ${response.statusText}`);
     }
-    return await response.json();
+    
+    const data = await response.json();
+    console.log('IG posts fetched:', {
+      count: data.length,
+      firstPost: data[0]
+    });
+    
+    return data;
   } catch (error) {
     console.error('Instagram fetch failed:', {
       viewId,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
     throw error;
   }
@@ -136,7 +130,13 @@ export async function updateDoneStatus(
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Update failed:', data);
+      console.error('Update failed:', {
+        taskId,
+        done,
+        isInstagram,
+        doneField,
+        error: data.error
+      });
       throw new Error(data.error || 'Failed to update status');
     }
 
@@ -150,10 +150,15 @@ export async function updateDoneStatus(
 export async function fetchRedditPosts(viewId: string): Promise<RedditPost[]> {
   try {
     const response = await fetch(`/api/reddit?viewId=${viewId}`);
-    if (!response.ok) throw new Error('Failed to fetch Reddit posts');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Reddit posts: ${response.statusText}`);
+    }
     return await response.json();
   } catch (error) {
-    console.error('Error fetching Reddit posts:', error);
+    console.error('Reddit fetch failed:', {
+      viewId,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
     throw error;
   }
 } 

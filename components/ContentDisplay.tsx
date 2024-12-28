@@ -7,9 +7,10 @@ interface ContentDisplayProps {
   content: IGPost | RedditPost;
   platform: "instagram" | "reddit";
   onComplete?: () => void;
+  userConfig: UserConfig;
 }
 
-export default function ContentDisplay({ content, platform, onComplete }: ContentDisplayProps) {
+export default function ContentDisplay({ content, platform, onComplete, userConfig }: ContentDisplayProps) {
   const [isError, setIsError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,15 +43,16 @@ export default function ContentDisplay({ content, platform, onComplete }: Conten
   const handleToggle = async (checked: boolean) => {
     try {
       setIsUpdating(true);
+      const doneField = platform === 'instagram' ? userConfig.doneFieldIG : userConfig.doneFieldReddit;
+      
       await onDone(
-        task.id, 
+        content.id, 
         checked, 
-        isInstagramPost,
-        doneField || ''
+        platform === 'instagram',
+        doneField
       );
       setIsDone(checked);
       
-      // Trigger confetti and callback when marking as done
       if (checked) {
         confetti({
           particleCount: 100,
@@ -60,7 +62,12 @@ export default function ContentDisplay({ content, platform, onComplete }: Conten
         onComplete?.();
       }
     } catch (error) {
-      console.error('Error toggling task:', error);
+      console.error('Error toggling task:', {
+        error,
+        platform,
+        contentId: content.id,
+        userName: userConfig.name
+      });
       setIsDone(!checked);
     } finally {
       setIsUpdating(false);

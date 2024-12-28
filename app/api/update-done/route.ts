@@ -1,69 +1,78 @@
 import { NextResponse } from 'next/server';
+import Airtable from 'airtable';
 
 export async function POST(request: Request) {
   try {
-    const { taskId, done, isInstagram, doneField } = await request.json();
-    
-    const baseId = isInstagram ? process.env.AIRTABLE_BASE_ID : process.env.AIRTABLE_REDDIT_BASE_ID;
-    const tableId = isInstagram ? process.env.AIRTABLE_IG : process.env.AIRTABLE_REDDIT_TABLE_ID;
+    const body = await request.json();
+    const { taskId, done, isInstagram, doneField } = body;
 
-    console.log('Updating task:', { 
-      taskId, 
-      done, 
-      isInstagram, 
+    // Debug environment variables
+    console.log('Environment check:', {
+      hasApiKey: !!process.env.AIRTABLE_API_KEY,
+      hasBaseId: !!process.env.AIRTABLE_BASE_ID,
+      hasRedditBaseId: !!process.env.AIRTABLE_REDDIT_BASE_ID,
+      hasIgTable: !!process.env.AIRTABLE_IG,
+      hasRedditTable: !!process.env.AIRTABLE_REDDIT_TABLE_ID,
+      isInstagram
+    });
+
+    if (!process.env.AIRTABLE_API_KEY) {
+      throw new Error('Missing Airtable API key');
+    }
+
+    // Use different base IDs for Instagram and Reddit
+    const baseId = isInstagram ? 
+      process.env.AIRTABLE_BASE_ID : 
+      process.env.AIRTABLE_REDDIT_BASE_ID;
+
+    if (!baseId) {
+      throw new Error(`Missing ${isInstagram ? 'AIRTABLE_BASE_ID' : 'AIRTABLE_REDDIT_BASE_ID'}`);
+    }
+
+    // Initialize Airtable with the correct base
+    const base = new Airtable({ 
+      apiKey: process.env.AIRTABLE_API_KEY 
+    }).base(baseId);
+
+    // Get the correct table ID
+    const tableId = isInstagram ? 
+      process.env.AIRTABLE_IG : 
+      process.env.AIRTABLE_REDDIT_TABLE_ID;
+
+    if (!tableId) {
+      throw new Error(`Missing ${isInstagram ? 'AIRTABLE_IG' : 'AIRTABLE_REDDIT_TABLE_ID'}`);
+    }
+
+    console.log('Updating record:', {
+      taskId,
+      done,
+      isInstagram,
       doneField,
-      baseId,
-      tableId 
+      baseId: baseId.substring(0, 5) + '...',
+      tableId: tableId.substring(0, 5) + '...',
+      recordData: { [doneField]: done }
     });
 
-    if (!baseId || !tableId) {
-      console.error('Missing configuration:', { baseId, tableId, isInstagram });
-      return NextResponse.json(
-        { error: 'Missing configuration' },
-        { status: 500 }
-      );
-    }
-
-    const url = `https://api.airtable.com/v0/${baseId}/${tableId}`;
-    
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        records: [
-          {
-            id: taskId,
-            fields: {
-              [doneField]: done
-            }
-          }
-        ]
-      })
+    // Update the record
+    const record = await base(tableId).update(taskId, {
+      [doneField]: done
     });
 
-    const responseText = await response.text();
-    console.log('Airtable response:', responseText);
+    return NextResponse.json({ 
+      success: true, 
+      record: {
+        id: record.id,
+        fields: record.fields
+      }
+    });
 
-    if (!response.ok) {
-      console.error('Airtable API error:', {
-        status: response.status,
-        response: responseText,
-        request: { taskId, done, isInstagram, doneField }
-      });
-      return NextResponse.json(
-        { error: 'Failed to update status', details: responseText },
-        { status: response.status }
-      );
-    }
-
-    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Server error:', error);
+    console.error('Error updating done status:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      { 
+        error: 'Failed to update status',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

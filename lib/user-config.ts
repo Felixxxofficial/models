@@ -1,22 +1,30 @@
-export const userConfigs: Record<string, {
+export interface UserConfig {
   name: string;
   redditViewId: string;
   igViewId: string;
   doneFieldIG: string;
   doneFieldReddit: string;
-}> = {
+  uploadFieldIG: string;
+  uploadFieldReddit: string;
+}
+
+export const userConfigs: Record<string, UserConfig> = {
   "janota.d@gmail.com": {
     name: "Meli",
     redditViewId: "viwe30kukWSBattHl",
     igViewId: "viw7JbVroNNLqviTl",
     doneFieldIG: "Done Meli",
-    doneFieldReddit: "Done Meli"
+    doneFieldReddit: "Done Meli",
+    uploadFieldIG: "Upload Content Meli",
+    uploadFieldReddit: "Upload Content Meli"
   },
-  "paline@example.com": {
-    name: "Paline",
-    redditViewId: "your-reddit-view-id",
-    igViewId: "your-ig-view-id",
+  "pragerkar@gmail.com": {
+    name: "Palina",
+    redditViewId: "viwlEQGwnopB0Hm9Y",
+    igViewId: "viwa3aWC8CXJxfuaa",
     doneFieldIG: "Done",
-    doneFieldReddit: "Done Paline"
+    doneFieldReddit: "Done Paline",
+    uploadFieldIG: "Upload Content Paline",
+    uploadFieldReddit: "Upload Content Paline"
   }
 }; 

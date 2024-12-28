@@ -10,7 +10,10 @@ export async function GET(request: Request) {
   const viewId = searchParams.get('viewId');
 
   if (!viewId) {
-    return NextResponse.json({ error: 'View ID is required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'View ID is required' },
+      { status: 400 }
+    );
   }
 
   try {
@@ -20,12 +23,17 @@ export async function GET(request: Request) {
       })
       .all();
 
-    return NextResponse.json(records.map(record => ({
+    const posts = records.map(record => ({
       id: record.id,
       ...record.fields
-    })));
+    }));
+
+    return NextResponse.json(posts);
   } catch (error) {
-    console.error('Airtable Error Details:', error);
-    return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });
+    console.error('Error fetching Reddit posts:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch Reddit posts' },
+      { status: 500 }
+    );
   }
 } 
