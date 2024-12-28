@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,21 +29,11 @@ const ITEMS_PER_PAGE = 9;
 // Helpers to distinguish Reddit vs Instagram
 function isRedditPost(task: IGPost | RedditPost): task is RedditPost {
   const url = task['Cloudinary URL']?.toLowerCase() || '';
-  console.log('Checking if Reddit post:', {
-    url,
-    isReddit: url.includes('reddit'),
-    taskId: task.id
-  });
   return url.includes('reddit');
 }
 
 function isIGPost(task: IGPost | RedditPost): task is IGPost {
   const url = task['Cloudinary URL']?.toLowerCase() || '';
-  console.log('Checking if IG post:', {
-    url,
-    isIG: url.includes('reel'),
-    taskId: task.id
-  });
   return url.includes('reel');
 }
 
@@ -309,95 +299,121 @@ const motivationalMessages = [
 export default function DailyTasks() {
   const { data: session } = useSession();
   const userEmail = session?.user?.email;
-  const userConfig = userEmail ? userConfigs[userEmail] : null;  // Use imported userConfigs
-
-  // More detailed logging
-  console.log('DailyTasks Debug:', {
-    sessionEmail: session?.user?.email,
-    userEmail,
-    userConfigExists: !!userConfig,
-    userConfigName: userConfig?.name,
-    availableConfigs: Object.keys(userConfigs),  // Updated to use imported userConfigs
-    fullUserConfig: userConfig
-  });
+  const userConfig = userEmail ? userConfigs[userEmail] : null;
 
   const [igTasks, setIgTasks] = useState<IGPost[]>([]);
   const [redditTasks, setRedditTasks] = useState<RedditPost[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>("todo");
+  const [contentType, setContentType] = useState<ContentType>("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Make sure "todo" is the default tab
-  const [contentTypeFilter, setContentTypeFilter] = useState<ContentType>("all");
-  const [activeTab, setActiveTab] = useState<TabType>("todo");  // This should be "todo" by default
-  const [displayedItems, setDisplayedItems] = useState(ITEMS_PER_PAGE);
-  
-  // Reset to first page when changing tabs
-  useEffect(() => {
-    setDisplayedItems(ITEMS_PER_PAGE);
-  }, [activeTab, contentTypeFilter]);
-
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const observerTarget = useRef<HTMLDivElement | null>(null);
-
-  // For success message
   const [showConfetti, setShowConfetti] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [message, setMessage] = useState('');
+
+  const showToast = useCallback((msg: string) => {
+    setMessage(msg);
+    setShowMessage(true);
+    setTimeout(() => {
+      setShowMessage(false);
+      setMessage('');
+    }, 3000);
+  }, []);
 
   // ────────────────────────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
   // ────────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
+      if (!userConfig) return;
+
       setIsLoading(true);
       try {
-        if (!userConfig) {
-          console.error('User config not found:', {
-            email: session?.user?.email,
-            availableConfigs: Object.keys(userConfigs)
-          });
-          throw new Error('User configuration not found');
-        }
-
-        console.log('Attempting to fetch with config:', {
-          igViewId: userConfig.igViewId,
-          redditViewId: userConfig.redditViewId,
-          userName: userConfig.name
-        });
-
         const [igData, redditData] = await Promise.all([
           fetchIGPosts(userConfig.igViewId),
           fetchRedditPosts(userConfig.redditViewId)
         ]);
-
-        console.log('Data fetched successfully:', {
-          igCount: igData.length,
-          redditCount: redditData.length
-        });
-
+        
         setIgTasks(igData);
         setRedditTasks(redditData);
       } catch (error) {
-        console.error('Error in fetchData:', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-          userConfig: userConfig ? {
-            name: userConfig.name,
-            igViewId: userConfig.igViewId,
-            redditViewId: userConfig.redditViewId
-          } : 'No user config'
-        });
-        setError('Failed to load tasks. Please try again later.');
+        setError('Failed to fetch tasks');
+        console.error('Error fetching tasks:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
-    if (userConfig) {
-      fetchData();
-    }
-  }, [userConfig, session?.user?.email]);
+    fetchData();
+  }, [userConfig]);
 
   // ────────────────────────────────────────────────────────────
+  // Build "to-do" vs "done" sets
+  // ────────────────────────────────────────────────��───────────
+  const todoTasks = useMemo(() => {
+    let filtered: (IGPost | RedditPost)[] = [];
+
+    // 1) Filter by content type
+    if (contentType === "all") {
+      filtered = [...igTasks, ...redditTasks];
+    } else if (contentType === "reels") {
+      filtered = igTasks.filter(task => 
+        task['Cloudinary URL']?.toLowerCase().includes('reel')
+      );
+    } else if (contentType === "image") {
+      filtered = redditTasks.filter((t) => t.Media === "Image");
+    } else if (contentType === "video") {
+      filtered = redditTasks.filter((t) => t.Media === "Gif/Video");
+    }
+
+    // 2) Keep only tasks that are NOT done
+    return filtered.filter((task) => {
+      const doneField = isIGPost(task) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
+      const isDone = task[doneField || ''];
+      return !isDone;
+    });
+  }, [igTasks, redditTasks, contentType, userConfig]);
+
+  const doneTasks = useMemo(() => {
+    let filtered: (IGPost | RedditPost)[] = [];
+    
+    // 1) Filter by content type
+    if (contentType === "all") {
+      filtered = [...igTasks, ...redditTasks];
+    } else if (contentType === "reels") {
+      filtered = igTasks.filter(task => 
+        task['Cloudinary URL']?.toLowerCase().includes('reel')
+      );
+    } else if (contentType === "image") {
+      filtered = redditTasks.filter((t) => t.Media === "Image");
+    } else if (contentType === "video") {
+      filtered = redditTasks.filter((t) => t.Media === "Gif/Video");
+    }
+
+    // 2) Keep only tasks that ARE done
+    return filtered.filter((task) => {
+      const doneField = isIGPost(task) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
+      const isDone = task[doneField || ''];
+      return isDone;
+    });
+  }, [igTasks, redditTasks, contentType, userConfig]);
+
+  // ────────────────────────────────────────────────────────────
+  // Current tasks and stats
+  // ────────────────────────────────────────────────────────────
+  const currentTasks = useMemo(() => {
+    const tasks = activeTab === "todo" ? todoTasks : doneTasks;
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return tasks.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [activeTab, todoTasks, doneTasks, currentPage]);
+
+  const stats = useMemo(() => ({
+    todoCount: todoTasks.length,
+    doneCount: doneTasks.length
+  }), [todoTasks, doneTasks]);
+
+  // ─────────────��──────────────────────────────────────────────
   // Counters for the filter buttons
   // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
@@ -412,137 +428,29 @@ export default function DailyTasks() {
     };
   }, [igTasks, redditTasks]);
 
-  // ───────────────────────────────────────��────────────────────
-  // Build "to-do" vs "done" sets
   // ────────────────────────────────────────────────────────────
-  const todoTasks = useMemo(() => {
-    let filtered: (IGPost | RedditPost)[] = [];
-
-    // 1) Filter by content type
-    if (contentTypeFilter === "all") {
-      filtered = [...igTasks, ...redditTasks];
-    } else if (contentTypeFilter === "reels") {
-      filtered = igTasks.filter(task => 
-        task['Cloudinary URL']?.toLowerCase().includes('reel')
-      );
-    } else if (contentTypeFilter === "image") {
-      filtered = redditTasks.filter((t) => t.Media === "Image");
-    } else if (contentTypeFilter === "video") {
-      filtered = redditTasks.filter((t) => t.Media === "Gif/Video");
-    }
-
-    // 2) Keep only tasks that are NOT done
-    return filtered.filter((task) => {
-      const doneField = isIGPost(task) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
-      const isDone = task[doneField || ''];
-      console.log('Todo task check:', {
-        taskId: task.id,
-        doneField,
-        isDone,
-        isIG: isIGPost(task),
-        taskType: isIGPost(task) ? 'Instagram' : 'Reddit',
-        rawValue: task[doneField || '']
-      });
-      return isDone !== true; // Explicitly check for not true
-    });
-  }, [igTasks, redditTasks, contentTypeFilter, userConfig]);
-
-  const doneTasks = useMemo(() => {
-    let filtered: (IGPost | RedditPost)[] = [];
-    
-    if (contentTypeFilter === "all") {
-      filtered = [...igTasks, ...redditTasks];
-    } else if (contentTypeFilter === "reels") {
-      filtered = igTasks.filter(task => 
-        task['Cloudinary URL']?.toLowerCase().includes('reel')
-      );
-    } else if (contentTypeFilter === "image") {
-      filtered = redditTasks.filter((t) => t.Media === "Image");
-    } else if (contentTypeFilter === "video") {
-      filtered = redditTasks.filter((t) => t.Media === "Gif/Video");
-    }
-
-    // Keep only tasks that ARE done
-    return filtered.filter((task) => {
-      const doneField = isIGPost(task) ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
-      const isDone = task[doneField || ''];
-      console.log('Done task check:', {
-        taskId: task.id,
-        doneField,
-        isDone,
-        isIG: isIGPost(task),
-        taskType: isIGPost(task) ? 'Instagram' : 'Reddit',
-        rawValue: task[doneField || '']
-      });
-      return isDone === true; // Explicitly check for true
-    });
-  }, [igTasks, redditTasks, contentTypeFilter, userConfig]);
-
-  // Which list is visible (To-Do or Done)?
-  const currentTasks = activeTab === "todo" ? todoTasks : doneTasks;
-
-  // ────────────────────────────────────────────────────────────
-  // Paginate with infinite scroll
-  // ────────────────────────────────────────────────────────────
-  const visibleTasks = useMemo(
-    () => currentTasks.slice(0, displayedItems),
-    [currentTasks, displayedItems]
-  );
-
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      if (
-        entries[0].isIntersecting &&
-        !isLoadingMore &&
-        currentTasks.length > displayedItems
-      ) {
-        setIsLoadingMore(true);
-        setDisplayedItems((prev) => prev + ITEMS_PER_PAGE);
-        setIsLoadingMore(false);
-      }
-    });
-
-    const el = observerTarget.current;
-    if (el) observer.observe(el);
-
-    return () => {
-      if (el) observer.unobserve(el);
-    };
-  }, [currentTasks, displayedItems, isLoadingMore]);
-
-  // ───────────���────────────────────────────────────────────────
   // Handle toggling "Done" => moves from To-Do to Done
   // ────────────────────────────────────────────────────────────
-  const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean, doneField: string) => {
+  const handleTaskDone = async (taskId: string, done: boolean, isInstagram: boolean) => {
     try {
-      console.log('Handling task done:', {
-        taskId,
-        done,
-        isInstagram,
-        doneField,
-        currentState: isInstagram ? 
-          igTasks.find(t => t.id === taskId)?.[doneField] :
-          redditTasks.find(t => t.id === taskId)?.[doneField]
-      });
-
+      const doneField = isInstagram ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
+      
       await updateDoneStatus(taskId, done, isInstagram, doneField);
       
-      // Update local state for both igTasks and redditTasks
+      // Update local state
       if (isInstagram) {
         setIgTasks(prevTasks => 
           prevTasks.map(task => 
-            task.id === taskId ? { ...task, [doneField]: Boolean(done) } : task
+            task.id === taskId ? { ...task, [doneField]: done } : task
           )
         );
       } else {
         setRedditTasks(prevTasks => 
           prevTasks.map(task => 
-            task.id === taskId ? { ...task, [doneField]: Boolean(done) } : task
+            task.id === taskId ? { ...task, [doneField]: done } : task
           )
         );
       }
-
-      console.log(`Task ${done ? 'completed' : 'uncompleted'} successfully`);
     } catch (error) {
       console.error("Error updating task status:", error);
     }
@@ -563,24 +471,11 @@ export default function DailyTasks() {
     return { total, completed, remaining, percentage };
   }, [igTasks, redditTasks, userConfig]);
 
-  const handleTaskComplete = () => {
-    // Show confetti
+  const handleTaskComplete = useCallback(() => {
     setShowConfetti(true);
-    
-    // Show random motivational message
-    const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-    setMessage(randomMessage);
-    setShowMessage(true);
-    
-    // Hide confetti and message after delay
-    setTimeout(() => {
-      setShowConfetti(false);
-    }, 5000);
-    
-    setTimeout(() => {
-      setShowMessage(false);
-    }, 3000);
-  };
+    showToast('Task completed! 🎉');
+    setTimeout(() => setShowConfetti(false), 3000);
+  }, [showToast]);
 
   // ────────────────────────────────────────────────────────────
   // Rendering
@@ -658,26 +553,26 @@ export default function DailyTasks() {
         <h3 className="text-lg font-semibold mb-2">Filter by Content Type</h3>
         <div className="flex flex-wrap gap-2">
           <Button
-            variant={contentTypeFilter === "all" ? "default" : "outline"}
-            onClick={() => setContentTypeFilter("all")}
+            variant={contentType === "all" ? "default" : "outline"}
+            onClick={() => setContentType("all")}
           >
             All {counts.all}
           </Button>
           <Button
-            variant={contentTypeFilter === "reels" ? "default" : "outline"}
-            onClick={() => setContentTypeFilter("reels")}
+            variant={contentType === "reels" ? "default" : "outline"}
+            onClick={() => setContentType("reels")}
           >
             Reels {counts.reels}
           </Button>
           <Button
-            variant={contentTypeFilter === "image" ? "default" : "outline"}
-            onClick={() => setContentTypeFilter("image")}
+            variant={contentType === "image" ? "default" : "outline"}
+            onClick={() => setContentType("image")}
           >
             Images {counts.images}
           </Button>
           <Button
-            variant={contentTypeFilter === "video" ? "default" : "outline"}
-            onClick={() => setContentTypeFilter("video")}
+            variant={contentType === "video" ? "default" : "outline"}
+            onClick={() => setContentType("video")}
           >
             Videos {counts.videos}
           </Button>
@@ -703,7 +598,7 @@ export default function DailyTasks() {
       {/* Task Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <AnimatePresence>
-          {visibleTasks.map((task, index) => (
+          {currentTasks.map((task, index) => (
             <TaskCard
               key={task.id}
               task={task}
@@ -717,7 +612,7 @@ export default function DailyTasks() {
       </div>
 
       {/* Infinite scroll marker */}
-      {currentTasks.length > displayedItems && (
+      {currentTasks.length > ITEMS_PER_PAGE && (
         <div ref={observerTarget} className="h-12" />
       )}
 
@@ -728,6 +623,7 @@ export default function DailyTasks() {
           height={window.innerHeight}
           recycle={false}
           numberOfPieces={200}
+          gravity={0.3}
         />
       )}
 
@@ -737,11 +633,6 @@ export default function DailyTasks() {
           {message}
         </div>
       )}
-
-      {/* Add this debugging info */}
-      <div className="text-sm text-gray-500 mb-2">
-        Debug: Email={userEmail}, Name={userConfig?.name}
-      </div>
     </div>
   );
 }

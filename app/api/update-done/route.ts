@@ -6,16 +6,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { taskId, done, isInstagram, doneField } = body;
 
-    // Debug environment variables
-    console.log('Environment check:', {
-      hasApiKey: !!process.env.AIRTABLE_API_KEY,
-      hasBaseId: !!process.env.AIRTABLE_BASE_ID,
-      hasRedditBaseId: !!process.env.AIRTABLE_REDDIT_BASE_ID,
-      hasIgTable: !!process.env.AIRTABLE_IG,
-      hasRedditTable: !!process.env.AIRTABLE_REDDIT_TABLE_ID,
-      isInstagram
-    });
-
     if (!process.env.AIRTABLE_API_KEY) {
       throw new Error('Missing Airtable API key');
     }
@@ -43,16 +33,6 @@ export async function POST(request: Request) {
       throw new Error(`Missing ${isInstagram ? 'AIRTABLE_IG' : 'AIRTABLE_REDDIT_TABLE_ID'}`);
     }
 
-    console.log('Updating record:', {
-      taskId,
-      done,
-      isInstagram,
-      doneField,
-      baseId: baseId.substring(0, 5) + '...',
-      tableId: tableId.substring(0, 5) + '...',
-      recordData: { [doneField]: done }
-    });
-
     // Update the record
     const record = await base(tableId).update(taskId, {
       [doneField]: done
@@ -67,7 +47,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error('Error updating done status:', error);
+    console.error('Error updating status:', error);
     return NextResponse.json(
       { 
         error: 'Failed to update status',
