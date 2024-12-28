@@ -54,19 +54,20 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
   const { data: session } = useSession();
   const userConfig = session?.user?.email ? userConfigs[session.user.email] : null;
   
-  // Identify based on Cloudinary URL
   const isInstagramPost = task['Cloudinary URL']?.toLowerCase().includes('reel');
   const isRedditPost = task['Cloudinary URL']?.toLowerCase().includes('reddit');
+  const isImage = task.Media === "Image";
   
   // Add state for lightbox
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   
-  // Debug log when opening lightbox
-  const handleOpenLightbox = () => {
-    setIsLightboxOpen(true);
+  // Only handle lightbox for images
+  const handleContentClick = () => {
+    if (isImage) {
+      setIsLightboxOpen(true);
+    }
   };
   
-  // Use the correct done field based on the content type
   const doneField = isInstagramPost ? userConfig?.doneFieldIG : userConfig?.doneFieldReddit;
   const [isDone, setIsDone] = useState(task[doneField || ''] || false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -168,26 +169,28 @@ function TaskCard({ task, index, onDone, onComplete, type }: TaskCardProps) {
     >
       <Card className="overflow-hidden">
         <CardContent className="p-2">
-          {/* Make the content clickable to open lightbox */}
+          {/* Content section */}
           <div 
-            onClick={handleOpenLightbox} 
-            className="cursor-pointer"
+            onClick={handleContentClick} 
+            className={isImage ? "cursor-pointer" : ""}
           >
-            <ContentDisplay content={task} platform={platformType} onComplete={onComplete} />
+            <ContentDisplay content={task} platform={type} onComplete={onComplete} />
           </div>
 
-          {/* Add the ImageLightbox component with DialogTitle */}
-          <ImageLightbox
-            isOpen={isLightboxOpen}
-            onClose={() => setIsLightboxOpen(false)}
-            images={[{ 
-              src: task['Cloudinary URL'] || '',
-              alt: getNotes()
-            }]}
-            title={getNotes()}
-            description={getNotes()}
-            dialogTitle={getNotes()}
-          />
+          {/* Lightbox only for images */}
+          {isImage && (
+            <ImageLightbox
+              isOpen={isLightboxOpen}
+              onClose={() => setIsLightboxOpen(false)}
+              images={[{ 
+                src: task['Cloudinary URL'] || '',
+                alt: task.Notes || 'Content Preview'
+              }]}
+              title={task.Notes || 'Content Preview'}
+              description={task.Notes || 'Content Preview'}
+              dialogTitle={task.Notes || 'Content Preview'}
+            />
+          )}
 
           <div className="mt-2 space-y-2">
             {/* Upload and Toggle row */}
@@ -293,7 +296,7 @@ const motivationalMessages = [
   "Keep up the great work! ⭐"
 ];
 
-// ─────────────────────────────────────────────────────────────
+// ───────────────────────��─────────────────────────────────────
 // DailyTasks: The main page
 // ─────────────────────────────────────────────────────────────
 export default function DailyTasks() {
@@ -321,7 +324,7 @@ export default function DailyTasks() {
     }, 3000);
   }, []);
 
-  // ────────────────────────────────────────────────────────────
+  // ──────────────���─────────────────────────────────────────────
   // Fetch data once (both IG + Reddit)
   // ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -415,7 +418,7 @@ export default function DailyTasks() {
     doneCount: doneTasks.length
   }), [todoTasks, doneTasks]);
 
-  // ────────────────────────────────────────────────────────────
+  // ���───────────────────────────────────────────────────────────
   // Counters for the filter buttons
   // ────────────────────────────────────────────────────────────
   const counts = useMemo(() => {
@@ -479,7 +482,7 @@ export default function DailyTasks() {
     setTimeout(() => setShowConfetti(false), 3000);
   }, [showToast]);
 
-  // ────────────────────────────────────────────────────────────
+  // ───────────────────────────────────���────────────────────────
   // Rendering
   // ────────────────────────────────────────────────────────────
   if (isLoading) {
