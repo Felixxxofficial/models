@@ -23,7 +23,7 @@ export const userConfigs: Record<string, UserConfig> = {
     redditViewId: "viwlEQGwnopB0Hm9Y",
     igViewId: "viwa3aWC8CXJxfuaa",
     doneFieldIG: "Done",
-    doneFieldReddit: "Done Paline",
+    doneFieldReddit: "Done Palina",
     uploadFieldIG: "Upload Content",
     uploadFieldReddit: "Upload Content Palina"
   }
