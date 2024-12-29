@@ -10,6 +10,13 @@ interface ContentDisplayProps {
   userConfig: UserConfig;
 }
 
+const getVideoPoster = (videoUrl: string): string => {
+  // Remove any query parameters
+  const urlWithoutParams = videoUrl.split('?')[0];
+  // Replace the video extension with jpg
+  return urlWithoutParams.replace(/\.(mp4|mov|webm)$/, '.jpg');
+};
+
 export default function ContentDisplay({ content, platform, onComplete, userConfig }: ContentDisplayProps) {
   const [isError, setIsError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -83,6 +90,7 @@ export default function ContentDisplay({ content, platform, onComplete, userConf
             className="w-full h-full object-cover rounded-md"
             controls={isPlaying}
             playsInline
+            poster={getVideoPoster(getMediaUrl())}
             src={getMediaUrl()}
             onError={() => setIsError(true)}
           >
