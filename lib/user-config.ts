@@ -68,7 +68,7 @@ const prodConfigs: Record<string, UserConfig> = {
   }
 };
 
-// Remove all testing code and use only this
+// Remove all testing code and use only this,
 const isProduction = process.env.NODE_ENV === 'production';
 console.log('Environment:', process.env.NODE_ENV);
 console.log('Using config for:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
